@@ -39,9 +39,9 @@
 const byte voltageMeasurePin = A7;
 const float voltsPerADCStep = 0.0146;
 
-const byte dimmerOutputs[] = {3}; //has to be transistor/mosfet
-const byte powerOutputs[] = {4, 5, 6, 7}; //pins with relays/mosfets connected to them to switch outputs
-const byte buttons[] = {A0, A1, A2, A3, A4}; //maps to all dimmers then to all outputs in ascending order
+const byte dimmerOutputs[] = {9}; //has to be transistor/mosfet
+const byte powerOutputs[] = {3, 6, 5}; //pins with relays/mosfets connected to them to switch outputs
+const byte buttons[] = {A3, A0, A2, A1}; //maps to all dimmers then to all outputs in ascending order
 
 const byte dimmerChannelOffset = 4; //move digital pins behind in the channel mapping (for expandability)
 const byte powerChannelOffset = 8; 
