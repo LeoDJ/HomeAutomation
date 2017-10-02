@@ -1,4 +1,7 @@
 .pioenvs
 .piolibdeps
-.vscode/c_cpp_properties.json
-.idea/workspace.xml
+.vscode
+.idea
+*.T3001OPEN
+.travis.yml
+BackupFiles
