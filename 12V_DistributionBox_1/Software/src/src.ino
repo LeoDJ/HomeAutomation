@@ -1,28 +1,18 @@
 /**
- * The MySensors Arduino library handles the wireless radio link and protocol
- * between your home built sensors/actuators and HA controller of choice.
- * The sensors forms a self healing radio network with optional repeaters. Each
- * repeater and gateway builds a routing tables in EEPROM which keeps track of the
- * network topology allowing messages to be routed to nodes.
- *
+ * Created by Leandro Späth
+ * 
+ * This sketch is used to control multiple 12V outputs including dimming of my 12V distribution box
+ * 
+ * Blog article: <link coming soon>
+ * 
+ *******************************
+ * Uses the MySensors Arduino library
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
  * Copyright (C) 2013-2015 Sensnology AB
- * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
- *
  * Documentation: http://www.mysensors.org
  * Support Forum: http://forum.mysensors.org
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * version 2 as published by the Free Software Foundation.
- *
  *******************************
- *
- * REVISION HISTORY
- * maybe
- *
- * DESCRIPTION
- * coming soon
  */
 
 // Enable debug prints to serial monitor
@@ -71,15 +61,17 @@ void setup()
         pinMode(buttons[i], INPUT_PULLUP);
     }
     for(byte i = 0; i < outCount; i++) { //sizeof reports size in bytes
-        //outputState[i] = request(i + powerChannelOffset, V_STATUS); //currently does not work
+        //bool state = request(i + powerChannelOffset, V_STATUS); //currently does not work
+        bool state = loadState(i + powerChannelOffset);
         pinMode(powerOutputs[i], OUTPUT);
-        setOutput(i, 0);
+        setOutput(i, state);
     }
     for(byte i = 0; i < dimCount; i++) { //sizeof reports size in bytes
         //byte level = request(i + dimmerChannelOffset, V_PERCENTAGE); //currently does not work
+        byte level = loadState(i + dimmerChannelOffset);
         pinMode(dimmerOutputs[i], OUTPUT);
         lastDimLevel[i] = 100;
-        fadeToLevel(i, /*level*/0);
+        fadeToLevel(i, level);
     }
 }
 
@@ -94,7 +86,7 @@ void presentation()
         present(i + powerChannelOffset, S_BINARY);
     }
     
-	sendSketchInfo("12V Distribution Box 01", "0.0.1");
+	sendSketchInfo("12V Distribution Box 01", "0.1.0");
 }
 
 
@@ -230,6 +222,7 @@ void fadeToLevel(byte outputId, byte level)
 {
     targetDimValue[outputId] = level;
     fadeRunning[outputId] = true;
+    saveState(outputId + dimmerChannelOffset, level); //save state to EEPROM
 }
 
 void toggleOutput(byte outputId) {
@@ -241,6 +234,7 @@ void toggleOutput(byte outputId) {
 void setOutput(byte outputId, bool state) {
     digitalWrite(powerOutputs[outputId], state);
     outputState[outputId] = state;
+    saveState(outputId + powerChannelOffset, state); //save state to EEPROM
 }
 
 unsigned int getVoltage() {
