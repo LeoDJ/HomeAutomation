@@ -42,10 +42,10 @@
 
 #define FADE_DELAY 10  // Delay in ms for each percentage fade up/down (10ms = 1s full-range dim)
 const byte dimmerButtonDivisor = 20; //do one fade step every x ms
-const int  dimmerDimDelay = 200; //time in ms to wait before dimming sets in, before that it simply switches
+const int  dimmerDimDelay = 300; //time in ms to wait before dimming sets in, before that it simply switches
 
 const byte voltageMeasurePin = A7;
-const float voltsPerADCStep = 0.0146;
+const float voltsPerADCStep = 0.01724; // using 1.1V reference and a resistor ratio of 15:1
 
 const byte dimmerOutputs[] = {9}; //has to be transistor/mosfet
 const byte powerOutputs[] = {3, 6, 5}; //pins with relays/mosfets connected to them to switch outputs
@@ -64,6 +64,9 @@ byte debounceTime = 40;
 
 void setup()
 {
+    //set analog reference to the internal 1.1V reference for better voltage measuring accuracy
+    analogReference(INTERNAL);
+
     for(byte i = 0; i < sizeof(buttons); i++) {
         pinMode(buttons[i], INPUT_PULLUP);
     }
