@@ -5,6 +5,9 @@
  * 
  * Blog article: <link coming soon>
  * 
+ * ToFix: 
+ * - it doesn't currently store the last dimming level, if the output was off and the box was power cycled
+ * 
  *******************************
  * Uses the MySensors Arduino library
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
@@ -53,6 +56,7 @@ const byte powerChannelOffset = 8;
 const byte dimCount = sizeof(dimmerOutputs), outCount = sizeof(powerOutputs);
 
 byte dimmerLevel[dimCount], targetDimValue[dimCount], lastDimLevel[dimCount];
+char dimmerDelta[dimCount] = {0};
 bool fadeRunning[dimCount];
 bool outputState[outCount];
 
@@ -75,8 +79,15 @@ void setup()
     for(byte i = 0; i < dimCount; i++) { //sizeof reports size in bytes
         //byte level = request(i + dimmerChannelOffset, V_PERCENTAGE); //currently does not work
         byte level = loadState(i + dimmerChannelOffset);
+        if(level > 0) {
+            lastDimLevel[i] = 0;
+            targetDimValue[i] = level;
+            dimmerDelta[i] = 1;
+        }
+        else {
+            lastDimLevel[i] = 100;
+        }
         pinMode(dimmerOutputs[i], OUTPUT);
-        lastDimLevel[i] = 100;
         fadeToLevel(i, level);
     }
 }
@@ -108,7 +119,6 @@ void loop()
 }
 
 unsigned long lastBtnPress = 0;
-char dimmerDelta[dimCount] = {0};
 unsigned long buttonPressedAt[sizeof(buttons)] = {0};
 
 byte getTimeDiffDimmerValue(byte id) {
@@ -147,6 +157,7 @@ void handleButtons() {
                     if(dimmerLevel[i] > 0) //workaround for the button push to correctly turn off LED
                         lastDimLevel[i] = 0;
                     newLevel = dimmerLevel[i];
+                    saveState(i + dimmerChannelOffset, newLevel); //save state to EEPROM
                 }
                 else { //if dimmer button was only shortly pushed
                     fadeToLevel(i, lastDimLevel[i]);
