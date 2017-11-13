@@ -18,3 +18,7 @@
 // Set WIFI SSID and password
 #define MY_ESP8266_SSID "MySSID"
 #define MY_ESP8266_PASSWORD "MyVerySecretPassword"
+
+
+// Set NRF pipe ID
+#define MY_RF24_BASE_RADIO_ID 0x00,0xFC,0xE1,0xA8,0xA8

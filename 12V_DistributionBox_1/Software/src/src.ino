@@ -25,8 +25,14 @@
 #define MY_RF24_CE_PIN 7
 #define MY_RF24_CS_PIN 8
 
+// Enable repeater
+#define MY_REPEATER_FEATURE
+
 #define MY_TRANSPORT_WAIT_READY_MS 5000
 #define MY_TRANSPORT_SANITY_CHECK
+
+// sensitive configuration saved in separate file
+#include "config.h"
 
 #include <MySensors.h>
 
