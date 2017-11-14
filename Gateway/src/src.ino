@@ -105,20 +105,68 @@
 //#define MY_DEFAULT_RX_LED_PIN  16  // Receive led pin
 //#define MY_DEFAULT_TX_LED_PIN  16  // the PCB, on board LED
 
+#define RF433_TRANSMIT_PIN 16
+#define RF433_RECEIVE_PIN  5
+
 #include <ESP8266WiFi.h>
 #include <MySensors.h>
+
+#include <RCSwitch.h>
+
+RCSwitch rf433 = RCSwitch();
+
+
 
 void setup()
 {
     // Setup locally attached sensors
+    rf433.enableReceive(RF433_RECEIVE_PIN);
+    rf433.enableTransmit(RF433_TRANSMIT_PIN);
 }
+
+#define C_433_ID 0
+#define C_IR_ID  1
 
 void presentation()
 {
     // Present locally attached sensors here
+    present(C_433_ID, S_CUSTOM, "433MHz sending/receiving of codes");
+    present(C_IR_ID, S_IR, "IR sender / receiver NOT YET IMPLEMENTED");
 }
 
 void loop()
 {
     // Send locally attech sensors data here
+    check_rx_433();
 }
+
+void check_rx_433() {
+    if(rf433.available()) {
+        uint32_t rxCode = rf433.getReceivedValue();
+        rf433.resetAvailable();
+        MyMessage rxMsg(C_433_ID, V_VAR1);
+        send(rxMsg.set(rxCode));
+    }
+}
+
+void tx_433(unsigned long code) {
+    rf433.disableReceive(); //disable receive as to not pick up own transmitted signal
+
+    rf433.send(code, 24);
+
+    rf433.enableReceive(RF433_RECEIVE_PIN); //reenable receive
+}
+
+void receive(const MyMessage &message)
+{
+    if(message.getCommand() == C_SET) {
+        if(message.sensor == C_433_ID) {
+            if(message.type == V_VAR1) {
+                unsigned long code = message.getULong();
+                tx_433(code);
+            }
+        }
+        
+    }
+}
+

@@ -3,4 +3,6 @@
 .vscode/c_cpp_properties.json
 .pioenvs
 .piolibdeps
+
 src/config.h
+lib/readme.txt
