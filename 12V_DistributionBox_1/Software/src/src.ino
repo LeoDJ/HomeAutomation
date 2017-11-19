@@ -3,10 +3,9 @@
  * 
  * This sketch is used to control multiple 12V outputs including dimming of my 12V distribution box
  * 
- * Blog article: <link coming soon>
+ * All sensitive configuration is done in the config.h file (rename config_sample.h)
  * 
- * ToFix: 
- * - it doesn't currently store the last dimming level, if the output was off and the box was power cycled
+ * More information can be found in the blog article: <link coming soon>
  * 
  *******************************
  * Uses the MySensors Arduino library
