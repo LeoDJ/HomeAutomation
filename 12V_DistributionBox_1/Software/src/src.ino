@@ -47,7 +47,7 @@ const int  dimmerDimDelay = 300; //time in ms to wait before dimming sets in, be
 
 const byte voltageMeasurePin = A7;
 const float voltsPerADCStep = 0.016673; // using 1.1V reference and a resistor ratio of 15:1
-#define VOLTAGE_PUBLISH_INTERVAL 5000   // interval in ms, by which the voltage reading is publishted to the mySensors network
+#define VOLTAGE_PUBLISH_INTERVAL 60000   // interval in ms, by which the voltage reading is publishted to the mySensors network
 
 const byte dimmerOutputs[] = {9}; //has to be transistor/mosfet
 const byte powerOutputs[] = {3, 6, 5}; //pins with relays/mosfets connected to them to switch outputs
@@ -76,18 +76,27 @@ void setup()
     //set analog reference to the internal 1.1V reference for better voltage measuring accuracy
     analogReference(INTERNAL);
 
+    
+    MyMessage stat(0, V_STATUS); 
+    MyMessage dim(0, V_DIMMER); 
+
     for(byte i = 0; i < sizeof(buttons); i++) {
         pinMode(buttons[i], INPUT_PULLUP);
     }
     for(byte i = 0; i < outCount; i++) { //sizeof reports size in bytes
+        byte cid = i + powerChannelOffset;
         //bool state = request(i + powerChannelOffset, V_STATUS); //currently does not work
-        bool state = loadState(i + powerChannelOffset);
+        bool state = loadState(cid);
+        send(stat.setSensor(cid).set(state)); //workaround for sensor being recognized in home assistant
         pinMode(powerOutputs[i], OUTPUT);
         setOutput(i, state);
     }
     for(byte i = 0; i < dimCount; i++) { //sizeof reports size in bytes
+        byte cid = i + dimmerChannelOffset;
         //byte level = request(i + dimmerChannelOffset, V_PERCENTAGE); //currently does not work
-        byte level = loadState(i + dimmerChannelOffset);
+        byte level = loadState(cid);  
+        send(dim.setSensor(cid).set(level)); //workaround for sensor being recognized in home assistant
+        send(stat.setSensor(cid).set(level > 0));
         if(level > 0) {
             lastDimLevel[i] = 0;
             targetDimValue[i] = level;
@@ -115,7 +124,7 @@ void presentation()
         present(i + powerChannelOffset, S_BINARY);
     }
     
-	sendSketchInfo("12V Distribution Box 01", "0.1.0");
+	sendSketchInfo("12V Distribution Box 01", "1.0.0");
 }
 
 
@@ -191,6 +200,7 @@ void handleButtons() {
                     if(dimmerLevel[i] > 0) //workaround for the button push to correctly turn off LED
                         lastDimLevel[i] = 0;
                     newLevel = dimmerLevel[i];
+                    targetDimValue[i] = newLevel;
                     saveState(i + dimmerChannelOffset, newLevel); //save state to EEPROM
                 }
                 else { //if dimmer button was only shortly pushed
@@ -233,7 +243,22 @@ void receive(const MyMessage &message)
             }
             else if(message.sensor >= dimmerChannelOffset) {
                 byte outputId = message.sensor - dimmerChannelOffset;
-                fadeToLevel(outputId, status * 100);
+                if(status) { //correct on/off switching with level saving
+                    if(lastDimLevel[outputId] != 0) {
+                        fadeToLevel(outputId, lastDimLevel[outputId]);
+                        lastDimLevel[outputId] = 0;
+                    }
+                    else {
+                        fadeToLevel(outputId, 100);
+                        lastDimLevel[outputId] = 0;
+                    }
+                }
+                else {
+                    lastDimLevel[outputId] = targetDimValue[outputId];
+                    fadeToLevel(outputId, 0);
+                }
+                MyMessage dim(message.sensor, V_DIMMER);
+                send(dim.set(targetDimValue[outputId]));
             }
             MyMessage stat(message.sensor, V_STATUS); //hopefully won't cause an overflow
             send(stat.set(status));
@@ -261,8 +286,8 @@ void receive(const MyMessage &message)
         else if(id >= dimmerChannelOffset) {
             MyMessage dim(message.sensor, V_DIMMER);
             MyMessage stat(message.sensor, V_STATUS);
-            send(stat.set(dimmerLevel[id - dimmerChannelOffset] > 0));
-            send(dim.set(dimmerLevel[id - dimmerChannelOffset]));
+            send(stat.set(targetDimValue[id - dimmerChannelOffset] > 0));
+            send(dim.set(targetDimValue[id - dimmerChannelOffset]));
         }
         else if(id == CID_VOLTAGE) {
             MyMessage m(id, V_VOLTAGE);
