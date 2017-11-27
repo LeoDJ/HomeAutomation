@@ -20,9 +20,10 @@
 // Enable debug prints to serial monitor
 #define MY_DEBUG
 
+#define MY_NODE_ID 1
+
 // Enable and select radio type attached
 #define MY_RADIO_NRF24
-//#define MY_RADIO_RFM69
 
 #define MY_RF24_CE_PIN 7
 #define MY_RF24_CS_PIN 8
@@ -38,17 +39,21 @@
 
 #include <MySensors.h>
 
+#define USER_DEBUG false
+
 #define FADE_DELAY 10  // Delay in ms for each percentage fade up/down (10ms = 1s full-range dim)
 const byte dimmerButtonDivisor = 20; //do one fade step every x ms
 const int  dimmerDimDelay = 300; //time in ms to wait before dimming sets in, before that it simply switches
 
 const byte voltageMeasurePin = A7;
-const float voltsPerADCStep = 0.01724; // using 1.1V reference and a resistor ratio of 15:1
+const float voltsPerADCStep = 0.016673; // using 1.1V reference and a resistor ratio of 15:1
+#define VOLTAGE_PUBLISH_INTERVAL 5000   // interval in ms, by which the voltage reading is publishted to the mySensors network
 
 const byte dimmerOutputs[] = {9}; //has to be transistor/mosfet
 const byte powerOutputs[] = {3, 6, 5}; //pins with relays/mosfets connected to them to switch outputs
 const byte buttons[] = {A3, A0, A2, A1}; //maps to all dimmers then to all outputs in ascending order
 
+#define CID_VOLTAGE 0  // child id of voltage sensor
 const byte dimmerChannelOffset = 4; //move digital pins behind in the channel mapping (for expandability)
 const byte powerChannelOffset = 8; 
 
@@ -58,6 +63,11 @@ byte dimmerLevel[dimCount], targetDimValue[dimCount], lastDimLevel[dimCount];
 char dimmerDelta[dimCount] = {0};
 bool fadeRunning[dimCount];
 bool outputState[outCount];
+
+#define VOLTAGE_READING_COUNT    200
+#define VOLTAGE_MEASURE_INTERVAL 10   // take a reading every 10ms
+float voltageAvg = 0;
+#define getVoltage() (uint16_t)(voltageAvg*1000)
 
 byte debounceTime = 40;
 
@@ -89,12 +99,15 @@ void setup()
         pinMode(dimmerOutputs[i], OUTPUT);
         fadeToLevel(i, level);
     }
+
+    //initialize voltage averaging
+    voltageAvg = (float)analogRead(voltageMeasurePin) * voltsPerADCStep; 
 }
 
 void presentation()
 {
     // Register the LED Dimmable Light with the gateway
-    present(0, S_MULTIMETER);
+    present(CID_VOLTAGE, S_MULTIMETER);
     for(byte i = 0; i < dimCount; i++) { //sizeof reports size in bytes
         present(i + dimmerChannelOffset, S_DIMMER);
     }
@@ -106,14 +119,32 @@ void presentation()
 }
 
 
-unsigned long lastFadeTick = 0;
+unsigned long lastFadeTick = 0, lastVoltageMeasure = 0, lastVoltagePublish = 0;
 
 void loop()
 {
-    if(millis() - lastFadeTick >= FADE_DELAY) {
+
+    if(millis() - lastFadeTick >= FADE_DELAY) { //run fading, if necesary
         lastFadeTick = millis();
         fadeTick();
     }
+
+    // take voltage measurements for more accurate voltage reading
+    if(millis() - lastVoltageMeasure >= VOLTAGE_MEASURE_INTERVAL) { 
+        lastVoltageMeasure = millis();
+        //build a rolling average
+        voltageAvg -= voltageAvg / VOLTAGE_READING_COUNT;
+        float v = (float)analogRead(voltageMeasurePin) * voltsPerADCStep;
+        voltageAvg += v / VOLTAGE_READING_COUNT;
+    }
+
+    if(millis() - lastVoltagePublish >= VOLTAGE_PUBLISH_INTERVAL) {
+        lastVoltagePublish = millis();
+        uint16_t voltage = getVoltage();
+        MyMessage m(CID_VOLTAGE, V_VOLTAGE);
+        send(m.set(voltage));
+    }
+
     handleButtons();
 }
 
@@ -132,7 +163,9 @@ void handleButtons() {
         bool isDigital = i >= dimCount;
         if(!state && buttonPressedAt[i] == 0) { //button rising edge
             buttonPressedAt[i] = millis(); //save when button was pressed
-            Serial.println(String(millis()) + " Button B" + String(i) + " rising edge detected");
+            #if USER_DEBUG
+                Serial.println(String(millis()) + " Button B" + String(i) + " rising edge detected");
+            #endif
         }
         else if(!state && buttonPressedAt[i] != 0) { //button is being held
             if(!isDigital) { //handling for dimmer buttons | TODO: can be placed in if clause above
@@ -147,7 +180,9 @@ void handleButtons() {
             }
         }
         else if(state && buttonPressedAt[i] != 0) { //if button released
-            Serial.println(String(millis()) + " Button B" + String(i) + " released. Was pressed at " + String(buttonPressedAt[i]));
+            #if USER_DEBUG
+                Serial.println(String(millis()) + " Button B" + String(i) + " released. Was pressed at " + String(buttonPressedAt[i]));
+            #endif
             if(!isDigital) {
                 byte newLevel;
                 if(millis() - buttonPressedAt[i] > dimmerDimDelay) { //if it had been dimming 
@@ -176,7 +211,9 @@ void handleButtons() {
             }
             else if(isDigital && millis() - buttonPressedAt[i] >= debounceTime) {
                 toggleOutput(i - dimCount);
-                Serial.println(String(millis()) + " Button B" + String(i) + " toggled digital output " + String(buttonPressedAt[i]));
+                #if USER_DEBUG
+                    Serial.println(String(millis()) + " Button B" + String(i) + " toggled digital output " + String(buttonPressedAt[i]));
+                #endif
                 buttonPressedAt[i] = 0;
             }
 
@@ -227,7 +264,7 @@ void receive(const MyMessage &message)
             send(stat.set(dimmerLevel[id - dimmerChannelOffset] > 0));
             send(dim.set(dimmerLevel[id - dimmerChannelOffset]));
         }
-        else if(id == 0) {
+        else if(id == CID_VOLTAGE) {
             MyMessage m(id, V_VOLTAGE);
             send(m.set(getVoltage()));
         }
@@ -251,12 +288,6 @@ void setOutput(byte outputId, bool state) {
     digitalWrite(powerOutputs[outputId], state);
     outputState[outputId] = state;
     saveState(outputId + powerChannelOffset, state); //save state to EEPROM
-}
-
-unsigned int getVoltage() {
-    float volt = (float)analogRead(voltageMeasurePin) * voltsPerADCStep;
-    unsigned int mv = (unsigned int)(volt * 1000);
-    return mv;
 }
 
 const uint8_t PROGMEM gamma8[] = {
