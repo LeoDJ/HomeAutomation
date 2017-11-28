@@ -10,6 +10,8 @@
  * 
  * More information can be found in the blog article: <link coming soon>
  * 
+ * TODO: temperature sensor
+ * 
  *******************************
  * Uses the MySensors Arduino library
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
@@ -19,6 +21,8 @@
  *
  *******************************
  */
+
+
 
 // Enable debug prints to serial monitor
 //#define MY_DEBUG
@@ -62,6 +66,7 @@
 #define TRIGGER_EDGE FALLING  // whether to trigger on a falling or a rising edge
 
 #define SEND_FREQUENCY  15000 // maximum frequency of status updates
+#define MAX_WATT        30000 // limit maximum reported wattage to catch astray readings
 
 // averaging configuration, better don't touch
 #define MEASURE_INTERVAL 5    // ms between measurements
@@ -74,14 +79,17 @@
 
 #define C_POWER_ID 1
 
-//MyMessage wattMsg(C_POWER_ID, V_WATT);
+/*MyMessage wattMsg(C_POWER_ID, V_WATT);
+MyMessage kwhMsg(C_POWER_ID,V_KWH);
+MyMessage pcMsg(C_POWER_ID,V_VAR1);*/
 
 double ppwh = (double)PULSE_FACTOR / 1000;  // pulses per watt hour
 
 bool pulseTriggered = 0;
 unsigned long lastTriggered = 0;
-unsigned long pulseCount;
 unsigned long watts, lastWatts = 0;
+unsigned long pulseCount = 0, lastPulseCount = 0;
+bool pcReceived = false;
 
 void setup()
 {
@@ -100,7 +108,7 @@ void presentation()
     present(C_POWER_ID, S_POWER);
 }*/
 
-unsigned long lastMeasure = 0;
+unsigned long lastMeasure = 0, lastSend = 0;
 
 void loop()
 {
@@ -112,12 +120,34 @@ void loop()
         measure();
     }
 
+    if(now - lastSend >= SEND_FREQUENCY) {
+        lastSend = now;
+        if(watts < MAX_WATT && watts != lastWatts) {
+            lastWatts = watts;
+            ///send(wattMsg.set(watts));
+        }
+        if(pcReceived && pulseCount != lastPulseCount) {
+            lastPulseCount = pulseCount;
+            float kWh = (float)pulseCount / (float)PULSE_FACTOR;
+            ///send(kwhMsg.set(kWh, 3));
+            ///send(pcMsg.set(pulseCount));
+        }
+        else if(!pcReceived) {
+            // no count received, request again
+            ///request(CHILD_ID, V_VAR1);
+        }
+    }
 }
 
 /*
 void receive(const MyMessage &message)
 {
-
+    if (message.type==V_VAR1) {
+		pulseCount = lastPulseCount = message.getLong();
+		//Serial.print("Received last pulse count from gw:");
+		//Serial.println(pulseCount);
+		pcReceived = true;
+	}
 }*/
 
 /**
