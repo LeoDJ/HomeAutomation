@@ -25,7 +25,7 @@
 
 
 // Enable debug prints to serial monitor
-//#define MY_DEBUG
+#define MY_DEBUG
 
 /**
  * sets the debug output
@@ -35,18 +35,18 @@
  * NOTE: the value gets checked as binary, so you can combine as you like
  *       e.g.: 3 shows raw sensor and timing (1+2)
  */
-#define USER_DEBUG 2
+#define USER_DEBUG 0
 
 #define MY_NODE_ID 5
 
 // Enable and select radio type attached
 #define MY_RADIO_NRF24
 
-//#define MY_RF24_CE_PIN 7
-//#define MY_RF24_CS_PIN 8
+#define MY_RF24_CE_PIN 7
+#define MY_RF24_CS_PIN 8
 
 // Enable repeater
-//#define MY_REPEATER_FEATURE
+#define MY_REPEATER_FEATURE
 
 #define MY_TRANSPORT_WAIT_READY_MS 5000
 #define MY_TRANSPORT_SANITY_CHECK
@@ -54,8 +54,7 @@
 // sensitive configuration saved in separate file
 #include "config.h"
 
-//#include <MySensors.h>
-#include <Arduino.h>
+#include <MySensors.h>
 
 #define PULSE_FACTOR    375   // Number of rotations/blinks per kWh of your meter
 #define LED_PIN         5     // pin with a LED attached to display energy unit consumed
@@ -79,9 +78,9 @@
 
 #define C_POWER_ID 1
 
-/*MyMessage wattMsg(C_POWER_ID, V_WATT);
+MyMessage wattMsg(C_POWER_ID, V_WATT);
 MyMessage kwhMsg(C_POWER_ID,V_KWH);
-MyMessage pcMsg(C_POWER_ID,V_VAR1);*/
+MyMessage pcMsg(C_POWER_ID,V_VAR1);
 
 double ppwh = (double)PULSE_FACTOR / 1000;  // pulses per watt hour
 
@@ -98,15 +97,15 @@ void setup()
     pinMode(LED_PIN, OUTPUT);
     pinMode(CNY70_LED_PIN, OUTPUT);
 }
-/*
+
 void presentation()
 {
     // Send the sketch version information to the gateway and Controller
-    sendSketchInfo("Energy Meter", "0.1.0");
+    sendSketchInfo("Energy Meter", "1.0.0");
     
     // Register this device as power sensor
     present(C_POWER_ID, S_POWER);
-}*/
+}
 
 unsigned long lastMeasure = 0, lastSend = 0;
 
@@ -124,22 +123,22 @@ void loop()
         lastSend = now;
         if(watts < MAX_WATT && watts != lastWatts) {
             lastWatts = watts;
-            ///send(wattMsg.set(watts));
+            send(wattMsg.set(watts));
         }
         if(pcReceived && pulseCount != lastPulseCount) {
             lastPulseCount = pulseCount;
             float kWh = (float)pulseCount / (float)PULSE_FACTOR;
-            ///send(kwhMsg.set(kWh, 3));
-            ///send(pcMsg.set(pulseCount));
+            send(kwhMsg.set(kWh, 3));
+            send(pcMsg.set(pulseCount));
         }
         else if(!pcReceived) {
             // no count received, request again
-            ///request(CHILD_ID, V_VAR1);
+            request(C_POWER_ID, V_VAR1);
         }
     }
 }
 
-/*
+
 void receive(const MyMessage &message)
 {
     if (message.type==V_VAR1) {
@@ -148,7 +147,7 @@ void receive(const MyMessage &message)
 		//Serial.println(pulseCount);
 		pcReceived = true;
 	}
-}*/
+}
 
 /**
  * This function takes the readings from the CNY70 sensor.
