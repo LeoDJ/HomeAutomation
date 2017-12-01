@@ -32,6 +32,7 @@
  * 0: nothing
  * 1: show the raw sensor values (useful for calibrating)
  * 2: show pulse timing information
+ * 4: temperature sensor debug info
  * NOTE: the value gets checked as binary, so you can combine as you like
  *       e.g.: 3 shows raw sensor and timing (1+2)
  */
@@ -55,6 +56,8 @@
 #include "config.h"
 
 #include <MySensors.h>
+#include <DallasTemperature.h>
+#include <OneWire.h>
 
 #define PULSE_FACTOR    375   // Number of rotations/blinks per kWh of your meter
 #define LED_PIN         5     // pin with a LED attached to display energy unit consumed
@@ -64,8 +67,12 @@
 #define TRIGGER_THRESH  5     // analogRead threshold before a meter pulse is triggered
 #define TRIGGER_EDGE FALLING  // whether to trigger on a falling or a rising edge
 
-#define SEND_FREQUENCY  15000 // maximum frequency of status updates
-#define MAX_WATT        30000 // limit maximum reported wattage to catch astray readings
+#define ONE_WIRE_PIN    6      // OneWire Bus pin for attaching the DS18B20 temperature Sensor
+#define TEMP_INTERVAL   300000 // Time between temperature updates
+#define TEMP_AVG_COUNT  10     // Number of readings to take for each data point
+
+#define SEND_FREQUENCY  15000  // maximum frequency of status updates
+#define MAX_WATT        30000  // limit maximum reported wattage to catch astray readings
 
 // averaging configuration, better don't touch
 #define MEASURE_INTERVAL 5    // ms between measurements
@@ -90,29 +97,55 @@ unsigned long watts, lastWatts = 0;
 unsigned long pulseCount = 0, lastPulseCount = 0;
 bool pcReceived = false;
 
+#define C_TEMP_ID 2
+OneWire oneWire(ONE_WIRE_PIN);
+DallasTemperature tempSensor(&oneWire);
+#define TEMP_CONVERSION_WAIT 750         // wait time in ms before conversion is complete
+MyMessage tempMsg(C_TEMP_ID, V_TEMP);
+float lastTemperature, tempSum;
+byte tempMeasureCount = 0;
+unsigned long lastTempRead = 0;
+
+
+void before()
+{
+  // Startup up the OneWire library
+  tempSensor.begin();
+}
+
 void setup()
 {
     Serial.begin(115200);
     // set LEDs as outputs
     pinMode(LED_PIN, OUTPUT);
     pinMode(CNY70_LED_PIN, OUTPUT);
+
+    // requestTemperatures() will not block current thread
+    tempSensor.setWaitForConversion(false);
+    tempSensor.requestTemperatures(); // initial temperature request
+    lastTempRead = millis(); // make sure function waits enough
+    
+    // request last known puls count from gateway
+    request(C_POWER_ID, V_VAR1);
 }
 
 void presentation()
 {
     // Send the sketch version information to the gateway and Controller
-    sendSketchInfo("Energy Meter", "1.0.0");
+    sendSketchInfo("Energy Meter", "1.1.0");
     
     // Register this device as power sensor
     present(C_POWER_ID, S_POWER);
+
+    // Also present the temperature sensor
+    present(C_TEMP_ID, S_TEMP);
 }
 
-unsigned long lastMeasure = 0, lastSend = 0;
+unsigned long now, lastMeasure = 0, lastSend = 0, lastTempSend = 0;
 
 void loop()
 {
-    //Serial.println(millis() - now); // print loop time
-    unsigned long now = millis();
+    now = millis();
 
     if(now - lastMeasure >= MEASURE_INTERVAL) {
         lastMeasure = now;
@@ -134,6 +167,45 @@ void loop()
         else if(!pcReceived) {
             // no count received, request again
             request(C_POWER_ID, V_VAR1);
+        }
+    }
+
+    if(now - lastTempSend >= TEMP_INTERVAL) { // start temperature measuring every interval
+        lastTempSend = now;
+        tempMeasureCount = 0; // also restarts temperature measurements
+        tempSensor.requestTemperatures();
+        lastTempRead = now; // make sure function waits enough
+    }
+    //tempSensor.isConversionComplete() sadly does not work
+    if(tempMeasureCount < TEMP_AVG_COUNT && now - lastTempRead >= TEMP_CONVERSION_WAIT) { // temp measure tick
+        lastTempRead = now;
+        float temp = tempSensor.getTempCByIndex(0);
+        if(temp > -127 && temp < 85) { // filter out false reading
+            tempSum += temp;
+            tempMeasureCount++;
+            tempSensor.requestTemperatures();
+        } 
+        #if USER_DEBUG & 4
+        else {
+            Serial.print("no valid reading: ");
+        }
+            Serial.print(now);              Serial.print(" ");
+            Serial.print(temp);             Serial.print(" ");
+            Serial.print(tempMeasureCount); Serial.print(" ");
+            Serial.println();
+        #endif
+
+        // send temperature, when enough readings accumulated
+        if(tempMeasureCount >= TEMP_AVG_COUNT) {
+            float temp = tempSum / tempMeasureCount;
+            send(tempMsg.set(temp, 2));
+            tempSum = 0;
+
+             #if USER_DEBUG & 4
+                Serial.print(F("send temp: "));
+                Serial.print(temp);
+                Serial.println();
+             #endif
         }
     }
 }
