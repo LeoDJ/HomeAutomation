@@ -67,7 +67,6 @@ bool outputState[outCount];
 #define VOLTAGE_READING_COUNT    200
 #define VOLTAGE_MEASURE_INTERVAL 10   // take a reading every 10ms
 float voltageAvg = 0;
-#define getVoltage() (uint16_t)(voltageAvg*1000)
 
 byte debounceTime = 40;
 
@@ -149,9 +148,8 @@ void loop()
 
     if(millis() - lastVoltagePublish >= VOLTAGE_PUBLISH_INTERVAL) {
         lastVoltagePublish = millis();
-        uint16_t voltage = getVoltage();
         MyMessage m(CID_VOLTAGE, V_VOLTAGE);
-        send(m.set(voltage));
+        send(m.set(voltageAvg, 3));
     }
 
     handleButtons();
@@ -291,7 +289,7 @@ void receive(const MyMessage &message)
         }
         else if(id == CID_VOLTAGE) {
             MyMessage m(id, V_VOLTAGE);
-            send(m.set(getVoltage()));
+            send(m.set(voltageAvg, 3));
         }
     }
 }
