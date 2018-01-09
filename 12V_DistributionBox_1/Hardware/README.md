@@ -1,11 +1,11 @@
 # Logic PCB
 ## Schematic
-![](Hardware/Logic_Schematic.png)
+![](Logic_Schematic.png)
 ## Layout
-![](Hardware/Logic_Layout.png)
+![](Logic_Layout.png)
 
 # Power PCB 
 ## Schematic
-![](Hardware/Power_Schematic.png)
+![](Power_Schematic.png)
 ## Layout
-![](Hardware/Power_Layout.png)
+![](Power_Layout.png)
