@@ -93,7 +93,8 @@ double ppwh = (double)PULSE_FACTOR / 1000;  // pulses per watt hour
 
 bool pulseTriggered = 0;
 unsigned long lastTriggered = 0;
-unsigned long watts, lastWatts = 0;
+unsigned long watts, lastWatts = 0, watt_avg;
+unsigned short watt_n;
 unsigned long pulseCount = 0, lastPulseCount = 0;
 bool pcReceived = false;
 
@@ -154,9 +155,14 @@ void loop()
 
     if(now - lastSend >= SEND_FREQUENCY) {
         lastSend = now;
-        if(watts < MAX_WATT && watts != lastWatts) {
-            lastWatts = watts;
-            send(wattMsg.set(watts));
+        if(watt_n > 0) {
+            unsigned long w = watt_avg / watt_n;
+            if(w < MAX_WATT && w != lastWatts) {
+                lastWatts = w;
+                send(wattMsg.set(w));
+                watt_avg = 0;
+                watt_n = 0;
+            }
         }
         if(pcReceived && pulseCount != lastPulseCount) {
             lastPulseCount = pulseCount;
@@ -296,6 +302,9 @@ void trigger() {
     // calculate watts based on time between pulses
     double interval = trig - lastTriggered;   
     watts = 3600000000.0 / (interval * ppwh);
+
+    watt_avg += watts;
+    watt_n++;
 
     
     #if USER_DEBUG & 2
