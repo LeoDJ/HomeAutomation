@@ -118,9 +118,11 @@ void presentation()
     present(CID_VOLTAGE, S_MULTIMETER);
     for(byte i = 0; i < dimCount; i++) { //sizeof reports size in bytes
         present(i + dimmerChannelOffset, S_DIMMER);
+        request(i + dimmerChannelOffset, S_DIMMER, MY_NODE_ID); //workaround for sensor being recognized in home assistant
     }
     for(byte i = 0; i < outCount; i++) { //sizeof reports size in bytes
         present(i + powerChannelOffset, S_BINARY);
+        request(i + powerChannelOffset, S_BINARY, MY_NODE_ID); //workaround for sensor being recognized in home assistant
     }
     
 	sendSketchInfo("12V Distribution Box 01", "1.0.0");
