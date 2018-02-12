@@ -34,3 +34,6 @@
 // Enable these if your MQTT broker requires usenrame/password
 //#define MY_MQTT_USER "username"
 //#define MY_MQTT_PASSWORD "password"
+
+// Set MQTT client id
+#define MY_MQTT_CLIENT_ID "mysensors-mqtt-gateway"

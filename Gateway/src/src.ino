@@ -35,19 +35,14 @@
 // Enable debug prints to serial monitor
 #define MY_DEBUG
 
-// Use a bit lower baudrate for serial prints on ESP8266 than default in MyConfig.h
-// #define MY_BAUD_RATE 9600
-
-// Enables and select radio type (if attached)
+// Enables and select radio type
 #define MY_RADIO_NRF24
-//#define MY_RADIO_RFM69
-//#define MY_RADIO_RFM95
+#define MY_RF24_PA_LEVEL RF24_PA_MAX
+
+//#define MY_GATEWAY_SERIAL
 
 #define MY_GATEWAY_MQTT_CLIENT
 #define MY_GATEWAY_ESP8266
-
-// Set MQTT client id
-#define MY_MQTT_CLIENT_ID "mysensors-1"
 
 // sensitive configuration saved in separate file
 #include "config.h"
@@ -94,8 +89,9 @@ void setup()
 void presentation()
 {
     // Present locally attached sensors here
-    present(C_433_ID, S_CUSTOM, "433MHz sending/receiving of codes");
-    present(C_IR_ID, S_IR, "IR sender / receiver NOT YET IMPLEMENTED");
+      // only 25 chars allowed   |-----------------------|
+    present(C_433_ID, S_CUSTOM, "433MHz tx/rx of codes");
+    present(C_IR_ID,  S_IR,     "IR sender / receiver WIP");
 }
 
 void loop()
