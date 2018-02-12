@@ -9,13 +9,6 @@
  */
 
 
-#include <Arduino.h>
-#include <ESP8266WiFi.h>
-#include <WiFiClient.h>
-#include <DallasTemperature.h>
-#include <OneWire.h>
-
-#include "config.h"
 /**
  * sets the debug output
  * 0: nothing
@@ -27,11 +20,26 @@
  */
 #define USER_DEBUG 3
 
+#define OTA_ENABLED
 
 #define ONE_WIRE_PIN      2      // OneWire Bus pin for attaching the DS18B20 temperature Sensor
 #define TEMP_SENSOR_COUNT 2      // amount of plugged in temperature sensors
 #define TEMP_INTERVAL     300000 // Time between temperature updates
 #define TEMP_AVG_COUNT    10     // Number of readings to take for each data point
+
+#include <Arduino.h>
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+#include <DallasTemperature.h>
+#include <OneWire.h>
+
+#if defined(OTA_ENABLED)
+    #include <ESP8266mDNS.h>
+    #include <WiFiUdp.h>
+    #include <ArduinoOTA.h>
+#endif
+
+#include "config.h"
 
 
 
@@ -49,6 +57,7 @@ void setup() {
     Serial.begin(115200);
     Serial.println(" >> TemperatureNode_Influx << ");
 
+    WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, pass);
     int timeout = 0;
     while (WiFi.status() != WL_CONNECTED) {
@@ -67,6 +76,32 @@ void setup() {
     Serial.println(WiFi.localIP());
     #endif
 
+
+    #if defined(OTA_ENABLED)
+        ArduinoOTA.setHostname("TemperatureNodeInflux1");
+        if(sizeof(otaPassword) > 1)
+            ArduinoOTA.setPassword(otaPassword);
+        ArduinoOTA.onStart([]() {
+            Serial.println("OTA Start");
+        });
+        ArduinoOTA.onEnd([]() {
+            Serial.println("\nEnd OTA");
+        });
+        ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+            Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+        });
+        ArduinoOTA.onError([](ota_error_t error) {
+            Serial.printf("Error[%u]: ", error);
+            if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+            else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+            else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+            else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+            else if (error == OTA_END_ERROR) Serial.println("End Failed");
+        });
+        ArduinoOTA.begin();
+    #endif
+
+
     tempSensor.begin();
     tempSensor.setWaitForConversion(false);
     tempSensor.requestTemperatures(); // initial temperature request
@@ -78,6 +113,7 @@ void setup() {
 
 void loop() {
     temperatureTick();
+    ArduinoOTA.handle();
 }
 
 
