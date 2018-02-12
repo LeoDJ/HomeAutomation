@@ -5,3 +5,5 @@
 *.T3001OPEN
 .travis.yml
 BackupFiles
+config.h
+readme.txt
