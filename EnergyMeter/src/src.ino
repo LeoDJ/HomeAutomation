@@ -10,8 +10,6 @@
  * 
  * More information can be found in the blog article: <link coming soon>
  * 
- * TODO: temperature sensor
- * 
  *******************************
  * Uses the MySensors Arduino library
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
