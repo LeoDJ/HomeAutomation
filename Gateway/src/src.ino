@@ -98,6 +98,9 @@ void loop()
 {
     // Send locally attech sensors data here
     check_rx_433();
+
+    if(millis() > 30000 && WiFi.status() != WL_CONNECTED)
+        ESP.restart();
 }
 
 void check_rx_433() {
