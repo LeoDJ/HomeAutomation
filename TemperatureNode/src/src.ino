@@ -1,10 +1,9 @@
 /**
  * Created by Leandro Späth
  * 
- * This sketch implements a MySensors node to keep track of your energy usage.
- * The sensor attaches to a meter with a turning wheel or blinking light.
- * In this case the sketch is used to read a Ferraris wheel meter
- * It will report the current power usage in watts.
+ * This sketch reads temperature of one or multiple connected DS18B20 Temperature Sensors
+ * 
+ * It is currently completely untested
  * 
  * All sensitive configuration is done in the config.h file (rename config_sample.h)
  * 
