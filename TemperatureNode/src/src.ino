@@ -3,7 +3,7 @@
  * 
  * This sketch reads temperature of one or multiple connected DS18B20 Temperature Sensors
  * 
- * It is currently completely untested
+ * The code is currently completely untested
  * 
  * All sensitive configuration is done in the config.h file (rename config_sample.h)
  * 
