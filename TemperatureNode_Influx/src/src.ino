@@ -3,9 +3,11 @@
  * 
  * This sketch reads the temperature of one or multiple connected DS18B20 temperature sensors.
  * It then pushes the acquired data to an influxDB instance.
+ * The data is inserted like MySensors over Home Assistant would do, to allow a seamless integration
  * 
  * All sensitive configuration is done in the config.h file (rename config_sample.h)
  *  
+ * future TODO: keep track of known sensors in EEPROM or something like that
  */
 
 
@@ -22,10 +24,13 @@
 
 #define OTA_ENABLED
 
-#define ONE_WIRE_PIN      2      // OneWire Bus pin for attaching the DS18B20 temperature Sensor
+#define ONE_WIRE_PIN      0      // OneWire Bus pin for attaching the DS18B20 temperature Sensor
 #define TEMP_SENSOR_COUNT 2      // amount of plugged in temperature sensors
 #define TEMP_INTERVAL     300000 // Time between temperature updates
 #define TEMP_AVG_COUNT    10     // Number of readings to take for each data point
+
+#define HOSTNAME "TemperatureNodeInflux1"
+#define NODE_ID  "6"
 
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
@@ -47,7 +52,8 @@ OneWire oneWire(ONE_WIRE_PIN);
 DallasTemperature tempSensor(&oneWire);
 #define TEMP_CONVERSION_WAIT 750         // wait time in ms before conversion is complete
 float lastTemperature[TEMP_SENSOR_COUNT], tempSum[TEMP_SENSOR_COUNT];
-byte tempMeasureCount = 0;
+byte tempMeasureCount = 0, sensorMeasureCount[TEMP_SENSOR_COUNT];
+DeviceAddress sensorAddresses[TEMP_SENSOR_COUNT];
 unsigned long lastTempRead = 0, lastTempSend = 0;
 
 WiFiClient client;
@@ -57,6 +63,7 @@ void setup() {
     Serial.begin(115200);
     Serial.println(" >> TemperatureNode_Influx << ");
 
+    WiFi.hostname(HOSTNAME);
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, pass);
     int timeout = 0;
@@ -78,7 +85,7 @@ void setup() {
 
 
     #if defined(OTA_ENABLED)
-        ArduinoOTA.setHostname("TemperatureNodeInflux1");
+        ArduinoOTA.setHostname(HOSTNAME);
         if(sizeof(otaPassword) > 1)
             ArduinoOTA.setPassword(otaPassword);
         ArduinoOTA.onStart([]() {
@@ -103,6 +110,7 @@ void setup() {
 
 
     tempSensor.begin();
+    indexSensors();
     tempSensor.setWaitForConversion(false);
     tempSensor.requestTemperatures(); // initial temperature request
     lastTempRead = millis(); // make sure function waits enough
@@ -117,6 +125,29 @@ void loop() {
 }
 
 
+void indexSensors() {
+    for(byte i = 0; i < TEMP_SENSOR_COUNT; i++) {
+        DeviceAddress devAddr;
+        if(tempSensor.getAddress(devAddr, i)) {
+            memcpy(sensorAddresses[i], devAddr, sizeof(sensorAddresses[i]));
+            #if USER_DEBUG & 2
+                printAddress(sensorAddresses[i]);
+                Serial.println();
+            #endif
+        }
+    }
+}
+#if USER_DEBUG & 2
+// function to print a device address
+void printAddress(DeviceAddress deviceAddress)
+{
+    for (uint8_t i = 0; i < 8; i++)
+    {
+        if (deviceAddress[i] < 16) Serial.print("0");
+        Serial.print(deviceAddress[i], HEX);
+    }
+}
+#endif
 
 
 void temperatureTick() {
@@ -126,6 +157,10 @@ void temperatureTick() {
         lastTempSend = now;
         lastTempRead = now;
         tempMeasureCount = 0;
+        for(byte i = 0; i < TEMP_SENSOR_COUNT; i++) {
+            tempSum[i] = 0;
+            sensorMeasureCount[i] = 0;
+        }
         tempSensor.requestTemperatures();
     }
 
@@ -134,11 +169,12 @@ void temperatureTick() {
         lastTempRead = now;
 
         //iterate through all sensors
+        bool someSensorSuccessful = false;
         for(byte i = 0; i < TEMP_SENSOR_COUNT; i++) {
-            float temp = tempSensor.getTempCByIndex(i);
-            bool someSensorSuccessful = false;
+            float temp = tempSensor.getTempC(sensorAddresses[i]); //request sensors in order of detection upon startup
             if(temp > -127 && temp < 85) { // filter out false reading
                 tempSum[i] += temp;
+                sensorMeasureCount[i]++;
                 someSensorSuccessful = true;
                 //when at last sensor, start next tick
             }
@@ -155,13 +191,14 @@ void temperatureTick() {
 
             if(i == TEMP_SENSOR_COUNT - 1 && someSensorSuccessful) {
                 tempMeasureCount++;
-                tempSensor.requestTemperatures();
             }
         }
+        tempSensor.requestTemperatures();
 
         //check if all measurements are taken
         if(tempMeasureCount >= TEMP_AVG_COUNT) {
             sendTemperatureValues();
+            Serial.println(String(now) + "  Sensor values sent successfully");
         }
     }
 }
@@ -172,19 +209,21 @@ void sendTemperatureValues() {
     //build line protocol insert statement
     //imitate mySensors data written through home assistant into influx
     for(byte i = 0; i < TEMP_SENSOR_COUNT; i++) {
-        String childId = String(i+1);
-        String nodeId = "6";
-        String temp = String(tempSum[i] / tempMeasureCount, 2); //convert temperature to string with 2 decimal places
-        payload += measurement+ ",";
-        payload += "child_id=" + childId + ",";
-        payload += "node_id=" + nodeId + ",";
-        payload += "entity_id=temperature_node_" + nodeId + "_" + childId + ",";
-        payload += "friendly_name=\"Temperature\\ Node\\ " + nodeId + "\\ " + childId + "\",";
-        payload += "domain=sensor "; //end tags, begin value
-        payload += "V_TEMP=" + temp + ",";
-        payload += "value=" + temp + ",";
-        payload += "device_str=\"direct_influx\"";
-        if(i < TEMP_SENSOR_COUNT - 1) payload += "\n";
+        if(sensorMeasureCount[i] > 0) {
+            String childId = String(i+1);
+            String nodeId = NODE_ID;
+            String temp = String(tempSum[i] / sensorMeasureCount[i], 2); //convert temperature to string with 2 decimal places
+            payload += measurement+ ",";
+            payload += "child_id=" + childId + ",";
+            payload += "node_id=" + nodeId + ",";
+            payload += "entity_id=temperature_node_" + nodeId + "_" + childId + ",";
+            payload += "friendly_name=Temperature\\ Node\\ " + nodeId + "\\ " + childId + ",";
+            payload += "domain=sensor "; //end tags, begin value
+            payload += "V_TEMP=" + temp + ",";
+            payload += "value=" + temp + ",";
+            payload += "device_str=\"direct_influx\"";
+            payload += "\n";
+        }
     }
     int payloadLength = payload.length();
 
@@ -220,7 +259,9 @@ void sendTemperatureValues() {
 
     while (client.connected()) {
         String line = client.readStringUntil('\n');
-        Serial.println(line);
+        #if USER_DEBUG & 4
+            Serial.println(line);
+        #endif
         if(line.indexOf("204 No Content") != -1) {
             #if USER_DEBUG & 4
                 Serial.println("influxdb successfull!");
