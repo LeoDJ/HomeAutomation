@@ -24,7 +24,7 @@
 
 #define OTA_ENABLED
 
-#define ONE_WIRE_PIN      0      // OneWire Bus pin for attaching the DS18B20 temperature Sensor
+#define ONE_WIRE_PIN      2      // OneWire Bus pin for attaching the DS18B20 temperature Sensor
 #define TEMP_SENSOR_COUNT 2      // amount of plugged in temperature sensors
 #define TEMP_INTERVAL     300000 // Time between temperature updates
 #define TEMP_AVG_COUNT    10     // Number of readings to take for each data point
@@ -111,8 +111,12 @@ void setup() {
 
     tempSensor.begin();
     indexSensors();
+    Serial.print("Parasitic power: ");
+    Serial.println(tempSensor.isParasitePowerMode() ? "ON" : "OFF");
     tempSensor.setWaitForConversion(false);
+    tempSensor.setResolution(12);
     tempSensor.requestTemperatures(); // initial temperature request
+    pinMode(ONE_WIRE_PIN, OUTPUT);
     lastTempRead = millis(); // make sure function waits enough
 }
 
@@ -162,12 +166,13 @@ void temperatureTick() {
             sensorMeasureCount[i] = 0;
         }
         tempSensor.requestTemperatures();
+        pinMode(ONE_WIRE_PIN, OUTPUT);
     }
 
     //call every measurement tick
     if(tempMeasureCount < TEMP_AVG_COUNT && now > lastTempRead + TEMP_CONVERSION_WAIT) {
         lastTempRead = now;
-
+        pinMode(ONE_WIRE_PIN, INPUT);
         //iterate through all sensors
         bool someSensorSuccessful = false;
         for(byte i = 0; i < TEMP_SENSOR_COUNT; i++) {
@@ -194,11 +199,13 @@ void temperatureTick() {
             }
         }
         tempSensor.requestTemperatures();
+        pinMode(ONE_WIRE_PIN, OUTPUT);
 
         //check if all measurements are taken
         if(tempMeasureCount >= TEMP_AVG_COUNT) {
+            Serial.print(String(now) + "  Sensor values sending... ");
             sendTemperatureValues();
-            Serial.println(String(now) + "  Sensor values sent successfully");
+            Serial.println("done");
         }
     }
 }
@@ -212,11 +219,19 @@ void sendTemperatureValues() {
         if(sensorMeasureCount[i] > 0) {
             String childId = String(i+1);
             String nodeId = NODE_ID;
+
+            // TODO: needs debugging
+            // String sensorName = "Temperature\\ Node\\ " + nodeId + "\\ " + childId;
+            // if(sizeof(sensorNames > 0) && sensorNames[i].length() > 0) {
+                // sensorName = sensorNames[i];
+            // }
+
             String temp = String(tempSum[i] / sensorMeasureCount[i], 2); //convert temperature to string with 2 decimal places
             payload += measurement+ ",";
             payload += "child_id=" + childId + ",";
             payload += "node_id=" + nodeId + ",";
             payload += "entity_id=temperature_node_" + nodeId + "_" + childId + ",";
+            // payload += "friendly_name=" + sensorName + ",";
             payload += "friendly_name=Temperature\\ Node\\ " + nodeId + "\\ " + childId + ",";
             payload += "domain=sensor "; //end tags, begin value
             payload += "V_TEMP=" + temp + ",";
