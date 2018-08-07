@@ -2,6 +2,7 @@
  * Created by Leandro Späth
  * 
  * This sketch reads the temperature of one or multiple connected DS18B20 temperature sensors.
+ * The temperatures will be read spread out evenly over the interval and then averaged
  * It then pushes the acquired data to an influxDB instance.
  * The data is inserted like MySensors over Home Assistant would do, to allow a seamless integration
  * 
@@ -154,10 +155,11 @@ void printAddress(DeviceAddress deviceAddress)
 }
 #endif
 
+bool tempMeasurementInProgress = false;
 
 void temperatureTick() {
     unsigned long now = millis();
-     //start temperature measuring every interval
+     //start temperature measuring every sending interval
     if(now > lastTempSend + TEMP_INTERVAL) {
         lastTempSend = now;
         lastTempRead = now;
@@ -168,11 +170,20 @@ void temperatureTick() {
         }
         tempSensor.requestTemperatures();
         pinMode(ONE_WIRE_PIN, OUTPUT);
+        tempMeasurementInProgress = true;
+    }
+    
+    //start new temperature measurement point during the sending interval
+    if(tempMeasureCount < TEMP_AVG_COUNT && now > lastTempRead + (TEMP_INTERVAL / TEMP_AVG_COUNT)) {
+        lastTempRead = now;
+        tempSensor.requestTemperatures();
+        pinMode(ONE_WIRE_PIN, OUTPUT);
+        tempMeasurementInProgress = true;
     }
 
-    //call every measurement tick
-    if(tempMeasureCount < TEMP_AVG_COUNT && now > lastTempRead + (TEMP_INTERVAL / TEMP_AVG_COUNT) {
-        lastTempRead = now;
+    //read temperature sensors after conversion
+    if(tempMeasurementInProgress && now > lastTempRead + TEMP_CONVERSION_WAIT) {
+        tempMeasurementInProgress = false;
         pinMode(ONE_WIRE_PIN, INPUT);
         //iterate through all sensors
         bool someSensorSuccessful = false;
@@ -199,8 +210,7 @@ void temperatureTick() {
                 tempMeasureCount++;
             }
         }
-        tempSensor.requestTemperatures();
-        pinMode(ONE_WIRE_PIN, OUTPUT);
+        
 
         //check if all measurements are taken
         if(tempMeasureCount >= TEMP_AVG_COUNT) {
