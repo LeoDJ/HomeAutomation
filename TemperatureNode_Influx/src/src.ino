@@ -28,6 +28,7 @@
 #define TEMP_SENSOR_COUNT 2      // amount of plugged in temperature sensors
 #define TEMP_INTERVAL     300000 // Time between temperature updates
 #define TEMP_AVG_COUNT    10     // Number of readings to take for each data point
+// ATTENTION: Please make sure, that a single temperature measurement interval (interval/count) does not exceed TEMP_CONVERSION_WAIT (750ms)
 
 #define HOSTNAME "TemperatureNodeInflux1"
 #define NODE_ID  "6"
@@ -170,7 +171,7 @@ void temperatureTick() {
     }
 
     //call every measurement tick
-    if(tempMeasureCount < TEMP_AVG_COUNT && now > lastTempRead + TEMP_CONVERSION_WAIT) {
+    if(tempMeasureCount < TEMP_AVG_COUNT && now > lastTempRead + (TEMP_INTERVAL / TEMP_AVG_COUNT) {
         lastTempRead = now;
         pinMode(ONE_WIRE_PIN, INPUT);
         //iterate through all sensors
