@@ -12,7 +12,8 @@ const String measurement = "xxx";               //measurement to push the data t
 const String auth = "dXNlcm5hbWU6cGFzc3dvcmQ="; //simple base64 encoded string username:password, leave empty for no authentication
 
 //leave empty for automatic naming based on hostname, node id and child id
-const String sensorNames[] = {
+const char* sensorNames[] = {
     "Balcony",
-    "Room 1"
+    "Room\\ 1",
+    "notice\\,\\ commas\\ and\\ spaces\\ need\\ to\\ be\\ escaped"
 };

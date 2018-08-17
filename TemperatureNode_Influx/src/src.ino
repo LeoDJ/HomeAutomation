@@ -120,6 +120,7 @@ void setup() {
     tempSensor.requestTemperatures(); // initial temperature request
     pinMode(ONE_WIRE_PIN, OUTPUT);
     lastTempRead = millis(); // make sure function waits enough
+    lastTempSend = lastTempRead;
 }
 
 
@@ -232,18 +233,18 @@ void sendTemperatureValues() {
             String nodeId = NODE_ID;
 
             // TODO: needs debugging
-            // String sensorName = "Temperature\\ Node\\ " + nodeId + "\\ " + childId;
-            // if(sizeof(sensorNames > 0) && sensorNames[i].length() > 0) {
-                // sensorName = sensorNames[i];
-            // }
+            String sensorName = "Temperature\\ Node\\ " + nodeId + "\\ " + childId;
+            if(sizeof(sensorNames > 0) && strlen(sensorNames[i]) > 0) {
+                sensorName = sensorNames[i];
+            }
 
             String temp = String(tempSum[i] / sensorMeasureCount[i], 2); //convert temperature to string with 2 decimal places
             payload += measurement+ ",";
             payload += "child_id=" + childId + ",";
             payload += "node_id=" + nodeId + ",";
             payload += "entity_id=temperature_node_" + nodeId + "_" + childId + ",";
-            // payload += "friendly_name=" + sensorName + ",";
-            payload += "friendly_name=Temperature\\ Node\\ " + nodeId + "\\ " + childId + ",";
+            payload += "friendly_name=" + sensorName + ",";
+            // payload += "friendly_name=Temperature\\ Node\\ " + nodeId + "\\ " + childId + ",";
             payload += "domain=sensor "; //end tags, begin value
             payload += "V_TEMP=" + temp + ",";
             payload += "value=" + temp + ",";
