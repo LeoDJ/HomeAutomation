@@ -10,10 +10,11 @@ void pollRFCode() {
         uint8_t protocol = rf.getReceivedProtocol();
         uint32_t code = rf.getReceivedValue();
         uint8_t numBits = rf.getReceivedBitlength();
+        uint16_t pulseLength = rf.getReceivedDelay();
 
         // publish received RF Code to MySensors
         char rfStr[20];
-        snprintf(rfStr, sizeof(rfStr), "%02X,%08lX,%02X", protocol, code, numBits);
+        snprintf(rfStr, sizeof(rfStr), "%02X,%08lX,%02X,%04X", protocol, code, numBits, pulseLength);
         send(msgRfReceive.set(rfStr));
 
         rf.resetAvailable();
@@ -41,17 +42,23 @@ void rfReceive(const MyMessage &message) {
         uint8_t protocol;
         uint32_t code;
         uint8_t numBits;
+        uint16_t pulseLength = 0;
 
         const char* input = message.getString();
 
         // decode message
-        sscanf(input, "%hhX,%lX,%hhX", &protocol, &code, &numBits);
+        sscanf(input, "%hhX,%lX,%hhX,%X", &protocol, &code, &numBits, &pulseLength);
+
+        char buf[24];
+        snprintf(buf, 24, "%02X,%08lX,%02X,%04X", protocol, code, numBits, pulseLength);
+        Serial.println("Sending code " + String(buf));
 
         rf.setProtocol(protocol);
+        if(pulseLength != 0)
+            rf.setPulseLength(pulseLength);
 
         // disable receiver, so interrupts don't mess with the timing
         rf.disableReceive();
-
         rf.send(code, numBits);
 
         // re-enable receiver
