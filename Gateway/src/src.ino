@@ -36,13 +36,16 @@
 #define MY_DEBUG
 
 // Enables and select radio type
-#define MY_RADIO_NRF24
+#define MY_RADIO_RF24
 #define MY_RF24_PA_LEVEL RF24_PA_MAX
 
 //#define MY_GATEWAY_SERIAL
 
 #define MY_GATEWAY_MQTT_CLIENT
 #define MY_GATEWAY_ESP8266
+
+// On the SHMod24 PCB, the CE pin is on GPIO16
+#define MY_RF24_CE_PIN 16
 
 // sensitive configuration saved in separate file
 #include "config.h"
@@ -70,66 +73,30 @@
 #include <ESP8266WiFi.h>
 #include <MySensors.h>
 
-#include <RCSwitch.h>
-
-RCSwitch rf433 = RCSwitch();
-
-
+#include "ota.h"
 
 void setup()
 {
-    // Setup locally attached sensors
-    rf433.enableReceive(RF433_RECEIVE_PIN);
-    rf433.enableTransmit(RF433_TRANSMIT_PIN);
+    initOTA();
 }
 
-#define C_433_ID 0
-#define C_IR_ID  1
 
 void presentation()
 {
     // Present locally attached sensors here
-      // only 25 chars allowed   |-----------------------|
-    present(C_433_ID, S_CUSTOM, "433MHz tx/rx of codes");
-    present(C_IR_ID,  S_IR,     "IR sender / receiver WIP");
 }
 
 void loop()
 {
     // Send locally attech sensors data here
-    check_rx_433();
+    loopOTA();
 
     if(millis() > 30000 && WiFi.status() != WL_CONNECTED)
         ESP.restart();
 }
 
-void check_rx_433() {
-    if(rf433.available()) {
-        uint32_t rxCode = rf433.getReceivedValue();
-        rf433.resetAvailable();
-        MyMessage rxMsg(C_433_ID, V_VAR1);
-        send(rxMsg.set(rxCode));
-    }
-}
-
-void tx_433(unsigned long code) {
-    rf433.disableReceive(); //disable receive as to not pick up own transmitted signal
-
-    rf433.send(code, 24);
-
-    rf433.enableReceive(RF433_RECEIVE_PIN); //reenable receive
-}
-
 void receive(const MyMessage &message)
 {
-    if(message.getCommand() == C_SET) {
-        if(message.sensor == C_433_ID) {
-            if(message.type == V_VAR1) {
-                unsigned long code = message.getULong();
-                tx_433(code);
-            }
-        }
-        
-    }
+
 }
 
