@@ -67,8 +67,29 @@ void presentation() {
 
 unsigned long now;
 
+uint32_t hassInitDelay = 5000;
+void hassInit() {
+    // send initial message for all variables (needed for Home Assistant auto detection)
+    #define IR_NULL "00,00000000,00,0000,00"
+    MyMessage msgIr(CID_IR, V_IR_SEND);
+    send(msgIr.set(IR_NULL));
+    msgIr.setType(V_IR_RECEIVE);
+    send(msgIr.set(IR_NULL));
+
+    #define RF_NULL "00,00000000,00,0000"
+    MyMessage msgRf(CID_RF, V_IR_SEND);
+    send(msgRf.set(RF_NULL));
+    msgRf.setType(V_IR_RECEIVE);
+    send(msgRf.set(RF_NULL));
+}
+
 void loop() {
     now = millis();
+
+    if(hassInitDelay > 0 && millis() > hassInitDelay) {
+        hassInit();
+        hassInitDelay = 0;
+    }
 
     irLoop();
     rfLoop();
