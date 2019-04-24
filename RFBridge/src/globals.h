@@ -9,6 +9,7 @@
 #define CID_RF 2
 #define RF_RX_PIN 2 //has to be an interrupt pin
 #define RF_TX_PIN 4
+#define RF_TX_ENABLE_PIN 6
 
 typedef struct {
     decode_type_t protocol;

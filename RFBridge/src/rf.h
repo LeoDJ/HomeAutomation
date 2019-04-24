@@ -29,6 +29,9 @@ void rfSetup() {
     #ifdef RF_TX_PIN
         rf.enableTransmit(RF_TX_PIN);
     #endif
+
+    pinMode(RF_TX_ENABLE_PIN, OUTPUT);
+    digitalWrite(RF_TX_ENABLE_PIN, LOW);
 }
 
 void rfLoop() {
@@ -59,8 +62,12 @@ void rfReceive(const MyMessage &message) {
 
         // disable receiver, so interrupts don't mess with the timing
         rf.disableReceive();
+        // enable 12V boost converter
+        digitalWrite(RF_TX_ENABLE_PIN, HIGH);
+        // actually send the code
         rf.send(code, numBits);
-
+        // shut down boost converter again
+        digitalWrite(RF_TX_ENABLE_PIN, LOW);
         // re-enable receiver
         rf.enableReceive(digitalPinToInterrupt(RF_RX_PIN));
     }

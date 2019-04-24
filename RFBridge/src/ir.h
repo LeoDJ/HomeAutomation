@@ -46,8 +46,13 @@ void pollIRCode() {
     decode_results ircode;
     if (irrecv.decode(&ircode)) {
         if(ircode.decode_type != UNKNOWN && ircode.value != REPEAT) {
+            uint16_t addr = ircode.address;
+            decode_type_t type = ircode.decode_type;
+            if(type != PANASONIC && type != SHARP) {
+                addr = 0;   // prevent random values for address on other protocols
+            }
             char irStr[25];
-            snprintf(irStr, 25, "%02X,%08lX,%02X,%04X,%02X", (uint8_t)ircode.decode_type, ircode.value, ircode.bits, ircode.address, 1);
+            snprintf(irStr, 25, "%02X,%08lX,%02X,%04X,%02X", (uint8_t)type, ircode.value, ircode.bits, addr, 1);
             send(msgIrReceive.set(irStr));
         }
         irrecv.resume();
@@ -62,6 +67,7 @@ void irLoop() {
     pollIRCode();
 }
 
+// receive IR message from MySensors
 void irReceive(const MyMessage &message) {
     if (message.type == V_IR_SEND && message.sensor == CID_IR) {
         IRCode c;

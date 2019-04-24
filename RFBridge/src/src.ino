@@ -26,9 +26,8 @@
  */
 #define USER_DEBUG 0
 
-//#define MY_NODE_ID 7
-#define MY_GATEWAY_SERIAL //for development purposes without gateway
-//Beamer on: 0;1;1;0;32;03,10C8E11E,20,0,01
+#define MY_NODE_ID 7
+// #define MY_GATEWAY_SERIAL //for development purposes without gateway
 
 // Enable and select radio type attached
 #define MY_RADIO_NRF24
@@ -37,7 +36,7 @@
 #define MY_RF24_CS_PIN 8
 
 // Enable repeater
-//#define MY_REPEATER_FEATURE
+#define MY_REPEATER_FEATURE
 
 #define MY_TRANSPORT_WAIT_READY_MS 5000
 #define MY_TRANSPORT_SANITY_CHECK
@@ -62,7 +61,8 @@ void setup() {
 void presentation() {
     // Send the sketch version information to the gateway and Controller
     sendSketchInfo("RFBridge", "1.0.0");
-    present(CID_IR, S_IR);
+    present(CID_IR, S_IR, "IR TX/RX");
+    present(CID_RF, S_IR, "433MHz TX/RX");
 }
 
 unsigned long now;
