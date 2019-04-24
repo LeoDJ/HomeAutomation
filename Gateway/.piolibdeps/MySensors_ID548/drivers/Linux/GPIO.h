@@ -6,8 +6,8 @@
  * network topology allowing messages to be routed to nodes.
  *
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
- * Copyright (C) 2013-2017 Sensnology AB
- * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+ * Copyright (C) 2013-2018 Sensnology AB
+ * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
  * Support Forum: http://forum.mysensors.org
@@ -31,22 +31,22 @@
 /**
  * @brief GPIO class
  */
-class GPIO
+class GPIOClass
 {
 
 public:
 	/**
-	 * @brief GPIO constructor.
+	 * @brief GPIOClass constructor.
 	 */
-	GPIO();
+	GPIOClass();
 	/**
-	 * @brief GPIO copy constructor.
+	 * @brief GPIOClass copy constructor.
 	 */
-	GPIO(const GPIO& other);
+	GPIOClass(const GPIOClass& other);
 	/**
-	 * @brief GPIO destructor.
+	 * @brief GPIOClass destructor.
 	 */
-	~GPIO();
+	~GPIOClass();
 	/**
 	 * @brief Configures the specified pin to behave either as an input or an output.
 	 *
@@ -79,13 +79,13 @@ public:
 	 * @brief Overloaded assign operator.
 	 *
 	 */
-	GPIO& operator=(const GPIO& other);
+	GPIOClass& operator=(const GPIOClass& other);
 
 private:
 	int lastPinNum; //!< @brief Highest pin number supported.
 	uint8_t *exportedPins; //!< @brief Array with information of which pins were exported.
 };
 
-extern GPIO gpio;
+extern GPIOClass GPIO;
 
 #endif

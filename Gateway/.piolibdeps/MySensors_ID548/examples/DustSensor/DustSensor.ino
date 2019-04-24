@@ -1,4 +1,4 @@
-/**
+/*
  * The MySensors Arduino library handles the wireless radio link and protocol
  * between your home built sensors/actuators and HA controller of choice.
  * The sensors forms a self healing radio network with optional repeaters. Each
@@ -6,8 +6,8 @@
  * network topology allowing messages to be routed to nodes.
  *
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
- * Copyright (C) 2013-2015 Sensnology AB
- * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+ * Copyright (C) 2013-2018 Sensnology AB
+ * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
  * Support Forum: http://forum.mysensors.org
@@ -42,15 +42,17 @@
 #define MY_DEBUG
 
 // Enable and select radio type attached
-#define MY_RADIO_NRF24
+#define MY_RADIO_RF24
+//#define MY_RADIO_NRF5_ESB
 //#define MY_RADIO_RFM69
+//#define MY_RADIO_RFM95
 
 #include <MySensors.h>
 
 #define CHILD_ID_DUST 0
 #define DUST_SENSOR_ANALOG_PIN 1
 
-unsigned long SLEEP_TIME = 30*1000; // Sleep time between reads (in milliseconds)
+uint32_t SLEEP_TIME = 30*1000; // Sleep time between reads (in milliseconds)
 //VARIABLES
 int val = 0;           // variable to store the value coming from the sensor
 float valDUST =0.0;
@@ -81,7 +83,7 @@ void loop()
 	// recover voltage
 	calcVoltage = voMeasured * (5.0 / 1024.0);
 
-	// linear eqaution taken from http://www.howmuchsnow.com/arduino/airquality/
+	// linear equation taken from http://www.howmuchsnow.com/arduino/airquality/
 	// Chris Nafis (c) 2012
 	dustDensity = (0.17 * calcVoltage - 0.1)*1000;
 

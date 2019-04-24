@@ -1,4 +1,4 @@
-/**
+/*
  * The MySensors Arduino library handles the wireless radio link and protocol
  * between your home built sensors/actuators and HA controller of choice.
  * The sensors forms a self healing radio network with optional repeaters. Each
@@ -6,8 +6,8 @@
  * network topology allowing messages to be routed to nodes.
  *
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
- * Copyright (C) 2013-2015 Sensnology AB
- * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+ * Copyright (C) 2013-2018 Sensnology AB
+ * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
  * Support Forum: http://forum.mysensors.org
@@ -40,8 +40,10 @@
 #define MY_DEBUG
 
 // Enable and select radio type attached
-#define MY_RADIO_NRF24
+#define MY_RADIO_RF24
+//#define MY_RADIO_NRF5_ESB
 //#define MY_RADIO_RFM69
+//#define MY_RADIO_RFM95
 
 #include <MySensors.h>
 
@@ -49,11 +51,11 @@
 
 #define CHILD_ID_UV 0
 
-unsigned long SLEEP_TIME = 30*1000; // Sleep time between reads (in milliseconds)
+uint32_t SLEEP_TIME = 30*1000; // Sleep time between reads (in milliseconds)
 
 MyMessage uvMsg(CHILD_ID_UV, V_UV);
 
-unsigned long lastSend =0;
+uint32_t lastSend =0;
 float uvIndex;
 float lastUV = -1;
 uint16_t uvIndexValue [12] = { 50, 227, 318, 408, 503, 606, 696, 795, 881, 976, 1079, 1170};
@@ -70,7 +72,7 @@ void presentation()
 
 void loop()
 {
-	unsigned long currentTime = millis();
+	uint32_t currentTime = millis();
 
 	uint16_t uv = analogRead(UV_SENSOR_ANALOG_PIN);// Get UV value
 	if (uv>1170) {

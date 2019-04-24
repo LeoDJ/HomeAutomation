@@ -1,8 +1,8 @@
 .pioenvs
 .vscode
-.piolibdeps
 .vscode/c_cpp_properties.json
 
 src/config.h
 lib/readme.txt
 .vscode/launch.json
+.vscode/.browse.c_cpp.db*

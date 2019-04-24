@@ -1,4 +1,4 @@
-/**
+/*
  * The MySensors Arduino library handles the wireless radio link and protocol
  * between your home built sensors/actuators and HA controller of choice.
  * The sensors forms a self healing radio network with optional repeaters. Each
@@ -6,8 +6,8 @@
  * network topology allowing messages to be routed to nodes.
  *
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
- * Copyright (C) 2013-2015 Sensnology AB
- * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+ * Copyright (C) 2013-2018 Sensnology AB
+ * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
  * Support Forum: http://forum.mysensors.org
@@ -27,9 +27,9 @@
  *
  * LED purposes:
  * - To use the feature, uncomment WITH_LEDS_BLINKING in MyConfig.h
- * - RX (green) - blink fast on radio message recieved. In inclusion mode will blink fast only on presentation recieved
+ * - RX (green) - blink fast on radio message received. In inclusion mode will blink fast only on presentation received
  * - TX (yellow) - blink fast on radio message transmitted. In inclusion mode will blink slowly
- * - ERR (red) - fast blink on error during transmission error or recieve crc error
+ * - ERR (red) - fast blink on error during transmission error or receive crc error
  *
  * See http://www.mysensors.org/build/esp8266_gateway for wiring instructions.
  * nRF24L01+  ESP8266
@@ -62,8 +62,9 @@
 #define MY_DEBUG
 
 // Enables and select radio type (if attached)
-#define MY_RADIO_NRF24
+#define MY_RADIO_RF24
 //#define MY_RADIO_RFM69
+//#define MY_RADIO_RFM95
 
 #define MY_GATEWAY_MQTT_CLIENT
 
@@ -95,16 +96,16 @@
 #define MY_RF24_CS_PIN 6
 #endif
 
-// Enable these if your MQTT broker requires usenrame/password
+// Enable these if your MQTT broker requires username/password
 //#define MY_MQTT_USER "username"
 //#define MY_MQTT_PASSWORD "password"
 
 // Enable MY_IP_ADDRESS here if you want a static ip address (no DHCP)
 #define MY_IP_ADDRESS 192,168,178,87
 
-// If using static ip you need to define Gateway and Subnet address as well
-#define MY_IP_GATEWAY_ADDRESS 192,168,178,1
-#define MY_IP_SUBNET_ADDRESS 255,255,255,0
+// If using static ip you can define Gateway and Subnet address as well
+//#define MY_IP_GATEWAY_ADDRESS 192,168,178,1
+//#define MY_IP_SUBNET_ADDRESS 255,255,255,0
 
 // MQTT broker ip address or url. Define one or the other.
 //#define MY_CONTROLLER_URL_ADDRESS "m20.cloudmqtt.com"
@@ -138,6 +139,7 @@
 
 void setup()
 {
+	// Setup locally attached sensors
 }
 
 void presentation()
@@ -145,8 +147,8 @@ void presentation()
 	// Present locally attached sensors here
 }
 
-
 void loop()
 {
 	// Send locally attached sensors data here
 }
+

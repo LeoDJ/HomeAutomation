@@ -6,8 +6,8 @@
 * network topology allowing messages to be routed to nodes.
 *
 * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
-* Copyright (C) 2013-2015 Sensnology AB
-* Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+* Copyright (C) 2013-2018 Sensnology AB
+* Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
 *
 * Documentation: http://www.mysensors.org
 * Support Forum: http://forum.mysensors.org
@@ -28,9 +28,9 @@
 * - RX/TX/ERR leds need to be connected between +5V (anode) and digital pin 6/5/4 with resistor 270-330R in a series
 *
 * LEDs (OPTIONAL):
-* - RX (green) - blink fast on radio message recieved. In inclusion mode will blink fast only on presentation recieved
+* - RX (green) - blink fast on radio message received. In inclusion mode will blink fast only on presentation received
 * - TX (yellow) - blink fast on radio message transmitted. In inclusion mode will blink slowly
-* - ERR (red) - fast blink on error during transmission error or recieve crc error
+* - ERR (red) - fast blink on error during transmission error or receive crc error
 *
 * If your Arduino board has additional serial ports
 * you can use to connect the RS485 module.

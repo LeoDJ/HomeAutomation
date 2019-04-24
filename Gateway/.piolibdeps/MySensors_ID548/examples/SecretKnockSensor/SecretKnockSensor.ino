@@ -1,4 +1,4 @@
-/**
+/*
  * The MySensors Arduino library handles the wireless radio link and protocol
  * between your home built sensors/actuators and HA controller of choice.
  * The sensors forms a self healing radio network with optional repeaters. Each
@@ -6,8 +6,8 @@
  * network topology allowing messages to be routed to nodes.
  *
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
- * Copyright (C) 2013-2015 Sensnology AB
- * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+ * Copyright (C) 2013-2018 Sensnology AB
+ * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
  * Support Forum: http://forum.mysensors.org
@@ -55,8 +55,10 @@
 #define MY_DEBUG
 
 // Enable and select radio type attached
-#define MY_RADIO_NRF24
+#define MY_RADIO_RF24
+//#define MY_RADIO_NRF5_ESB
 //#define MY_RADIO_RFM69
+//#define MY_RADIO_RFM95
 
 #include <MySensors.h>
 
@@ -137,7 +139,7 @@ void loop()
 				digitalWrite(ledPin, HIGH);        // Turn on the red light too so the user knows we're programming.
 				chirp(500, 1500);                  // And play a tone in case the user can't see the LED.
 				chirp(500, 1000);
-			} else {                             // If we are in programing mode, turn it off.
+			} else {                             // If we are in programming mode, turn it off.
 				programModeActive = false;
 				digitalWrite(ledPin, LOW);
 				chirp(500, 1000);                  // Turn off the programming LED and play a sad note.
@@ -300,8 +302,7 @@ bool validateKnock()
 	    less of a pain to use if you're tempo is a little slow or fast.
 	*/
 	int totaltimeDifferences = 0;
-	int timeDiff = 0;
-	for (i=0; i < maximumKnocks; i++) {   // Normalize the times
+	for (int timeDiff = 0, i=0; i < maximumKnocks; i++) {   // Normalize the times
 		knockReadings[i]= map(knockReadings[i], 0, maxKnockInterval, 0, 100);
 		timeDiff = abs(knockReadings[i] - secretCode[i]);
 		if (timeDiff >

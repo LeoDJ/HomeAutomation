@@ -6,8 +6,8 @@
  * network topology allowing messages to be routed to nodes.
  *
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
- * Copyright (C) 2013-2017 Sensnology AB
- * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+ * Copyright (C) 2013-2018 Sensnology AB
+ * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
  * Support Forum: http://forum.mysensors.org
@@ -92,7 +92,7 @@ void *interruptHandler(void *args)
 
 	// Setup poll structure
 	polls.fd     = fd;
-	polls.events = POLLPRI;
+	polls.events = POLLPRI | POLLERR;
 
 	while (1) {
 		// Wait for it ...
@@ -103,12 +103,11 @@ void *interruptHandler(void *args)
 		}
 		// Do a dummy read to clear the interrupt
 		//	A one character read appars to be enough.
-		//	Followed by a seek to reset it.
-		if (read (fd, &c, 1) < 0) {
+		if (lseek (fd, 0, SEEK_SET) < 0) {
 			logError("Interrupt handler error: %s\n", strerror(errno));
 			break;
 		}
-		if (lseek (fd, 0, SEEK_SET) < 0) {
+		if (read (fd, &c, 1) < 0) {
 			logError("Interrupt handler error: %s\n", strerror(errno));
 			break;
 		}

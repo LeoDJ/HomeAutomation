@@ -6,8 +6,8 @@
 * network topology allowing messages to be routed to nodes.
 *
 * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
-* Copyright (C) 2013-2015 Sensnology AB
-* Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+* Copyright (C) 2013-2018 Sensnology AB
+* Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
 *
 * Documentation: http://www.mysensors.org
 * Support Forum: http://forum.mysensors.org
@@ -20,7 +20,7 @@
 *
 * DESCRIPTION
 * The ArduinoGateway prints data received from sensors on the serial link.
-* The gateway accepts input on seral which will be sent out on radio network.
+* The gateway accepts input on serial which will be sent out on radio network.
 *
 * This GW code is designed for Sensebender GateWay / (Arduino Zero variant)
 *
@@ -29,9 +29,9 @@
 *
 * LEDs on board (default assignments):
 * - Orange: USB RX/TX - Blink when receiving / transmitting on USB CDC device
-* - Yellow: RX  - Blink fast on radio message recieved. In inclusion mode will blink fast only on presentation recieved
+* - Yellow: RX  - Blink fast on radio message received. In inclusion mode will blink fast only on presentation received
 * - Green : TX  - Blink fast on radio message transmitted. In inclusion mode will blink slowly
-* - Red   : ERR - Fast blink on error during transmission error or recieve crc error
+* - Red   : ERR - Fast blink on error during transmission error or receive crc error
 * - Blue  : free - (use with LED_BLUE macro)
 *
 */
@@ -41,8 +41,10 @@
 #define MY_DEBUG
 
 // Enable and select radio type attached
-#define MY_RADIO_NRF24
+#define MY_RADIO_RF24
+//#define MY_RADIO_NRF5_ESB
 //#define MY_RADIO_RFM69
+//#define MY_RADIO_RFM95
 
 // Set LOW transmit power level as default, if you have an amplified NRF-module and
 // power your radio separately with a good regulator you can turn up PA level.
@@ -51,7 +53,7 @@
 // Enable serial gateway
 #define MY_GATEWAY_SERIAL
 
-// Define a lower baud rate for Arduino's running on 8 MHz (Arduino Pro Mini 3.3V & SenseBender)
+// Define a lower baud rate for Arduinos running on 8 MHz (Arduino Pro Mini 3.3V & Sensebender)
 #if F_CPU == 8000000L
 #define MY_BAUD_RATE 38400
 #endif
@@ -122,8 +124,8 @@ void preHwInit()
 	for (int i=0; i< num_of_leds; i++) {
 		pinMode(leds[i], OUTPUT);
 	}
-	uint8_t led_state = 0;
 	if (digitalRead(MY_SWC1)) {
+		uint8_t led_state = 0;
 		while (!Serial) {
 			digitalWrite(LED_BLUE, led_state);
 			led_state ^= 0x01;
@@ -133,7 +135,7 @@ void preHwInit()
 	digitalWrite(LED_BLUE, LOW);
 	if (Serial) {
 		Serial.println("Sensebender GateWay test routine");
-		Serial.print("Mysensors core version : ");
+		Serial.print("MySensors core version : ");
 		Serial.println(MYSENSORS_LIBRARY_VERSION);
 		Serial.print("GateWay sketch version : ");
 		Serial.println(SKETCH_VERSION);
@@ -250,16 +252,15 @@ bool testEEProm()
 {
 	uint8_t eeprom_d1, eeprom_d2;
 	SerialUSB.print(" -> EEPROM ");
-	Wire.begin();
-	eeprom_d1 = i2c_eeprom_read_byte(EEPROM_VERIFICATION_ADDRESS);
+	eeprom_d1 = hwReadConfig(EEPROM_VERIFICATION_ADDRESS);
 	delay(500);
 	eeprom_d1 = ~eeprom_d1; // invert the bits
-	i2c_eeprom_write_byte(EEPROM_VERIFICATION_ADDRESS, eeprom_d1);
+	hwWriteConfig(EEPROM_VERIFICATION_ADDRESS, eeprom_d1);
 	delay(500);
-	eeprom_d2 = i2c_eeprom_read_byte(EEPROM_VERIFICATION_ADDRESS);
+	eeprom_d2 = hwReadConfig(EEPROM_VERIFICATION_ADDRESS);
 	if (eeprom_d1 == eeprom_d2) {
 		SerialUSB.println("PASSED");
-		i2c_eeprom_write_byte(EEPROM_VERIFICATION_ADDRESS, ~eeprom_d1);
+		hwWriteConfig(EEPROM_VERIFICATION_ADDRESS, ~eeprom_d1);
 		return true;
 	}
 	SerialUSB.println("FAILED!");

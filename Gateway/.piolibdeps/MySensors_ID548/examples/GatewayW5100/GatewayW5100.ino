@@ -1,4 +1,4 @@
-/**
+/*
  * The MySensors Arduino library handles the wireless radio link and protocol
  * between your home built sensors/actuators and HA controller of choice.
  * The sensors forms a self healing radio network with optional repeaters. Each
@@ -6,8 +6,8 @@
  * network topology allowing messages to be routed to nodes.
  *
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
- * Copyright (C) 2013-2015 Sensnology AB
- * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+ * Copyright (C) 2013-2018 Sensnology AB
+ * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
  * Support Forum: http://forum.mysensors.org
@@ -33,9 +33,9 @@
  *
  * LED purposes:
  * - To use the feature, uncomment MY_DEFAULT_xxx_LED_PIN in the sketch below
- * - RX (green) - blink fast on radio message recieved. In inclusion mode will blink fast only on presentation recieved
+ * - RX (green) - blink fast on radio message received. In inclusion mode will blink fast only on presentation received
  * - TX (yellow) - blink fast on radio message transmitted. In inclusion mode will blink slowly
- * - ERR (red) - fast blink on error during transmission error or recieve crc error
+ * - ERR (red) - fast blink on error during transmission error or receive crc error
  *
  * See http://www.mysensors.org/build/ethernet_gateway for wiring instructions.
  *
@@ -45,8 +45,10 @@
 #define MY_DEBUG
 
 // Enable and select radio type attached
-#define MY_RADIO_NRF24
+#define MY_RADIO_RF24
+//#define MY_RADIO_NRF5_ESB
 //#define MY_RADIO_RFM69
+//#define MY_RADIO_RFM95
 
 // Enable gateway ethernet module type
 #define MY_GATEWAY_W5100
@@ -72,12 +74,19 @@
 #define MY_RF24_CS_PIN 6
 #endif
 
-// Enable to UDP
-//#define MY_USE_UDP
+// Enable UDP communication
+//#define MY_USE_UDP  // If using UDP you need to set MY_CONTROLLER_IP_ADDRESS below
 
-#define MY_IP_ADDRESS 192,168,178,66   // If this is disabled, DHCP is used to retrieve address
+// Enable MY_IP_ADDRESS here if you want a static ip address (no DHCP)
+#define MY_IP_ADDRESS 192,168,178,66
+
+// If using static ip you can define Gateway and Subnet address as well
+//#define MY_IP_GATEWAY_ADDRESS 192,168,178,1
+//#define MY_IP_SUBNET_ADDRESS 255,255,255,0
+
 // Renewal period if using DHCP
 //#define MY_IP_RENEWAL_INTERVAL 60000
+
 // The port to keep open on node server mode / or port to contact in client mode
 #define MY_PORT 5003
 
@@ -87,7 +96,7 @@
 
 // The MAC address can be anything you want but should be unique on your network.
 // Newer boards have a MAC address printed on the underside of the PCB, which you can (optionally) use.
-// Note that most of the Ardunio examples use  "DEAD BEEF FEED" for the MAC address.
+// Note that most of the Arduino examples use  "DEAD BEEF FEED" for the MAC address.
 #define MY_MAC_ADDRESS 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 
 // Enable inclusion mode
@@ -108,18 +117,24 @@
 //#define MY_DEFAULT_RX_LED_PIN  8  // Receive led pin
 //#define MY_DEFAULT_TX_LED_PIN  9  // Transmit led pin
 
-
 #if defined(MY_USE_UDP)
 #include <EthernetUdp.h>
 #endif
 #include <Ethernet.h>
 #include <MySensors.h>
 
-
 void setup()
 {
+	// Setup locally attached sensors
+}
+
+void presentation()
+{
+	// Present locally attached sensors here
 }
 
 void loop()
 {
+	// Send locally attached sensors data here
 }
+

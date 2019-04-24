@@ -1,4 +1,4 @@
-/**
+/*
  * The MySensors Arduino library handles the wireless radio link and protocol
  * between your home built sensors/actuators and HA controller of choice.
  * The sensors forms a self healing radio network with optional repeaters. Each
@@ -6,8 +6,8 @@
  * network topology allowing messages to be routed to nodes.
  *
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
- * Copyright (C) 2013-2015 Sensnology AB
- * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+ * Copyright (C) 2013-2018 Sensnology AB
+ * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
  * Support Forum: http://forum.mysensors.org
@@ -38,8 +38,10 @@
 #define MY_DEBUG
 
 // Enable and select radio type attached
-#define MY_RADIO_NRF24
+#define MY_RADIO_RF24
+//#define MY_RADIO_NRF5_ESB
 //#define MY_RADIO_RFM69
+//#define MY_RADIO_RFM95
 
 #include <MySensors.h>
 
@@ -51,17 +53,17 @@
 //which is derived from the chart in datasheet
 /***********************Software Related Macros************************************/
 #define         CALIBARAION_SAMPLE_TIMES     (50)    //define how many samples you are going to take in the calibration phase
-#define         CALIBRATION_SAMPLE_INTERVAL  (500)   //define the time interal(in milisecond) between each samples in the
-//cablibration phase
+#define         CALIBRATION_SAMPLE_INTERVAL  (500)   //define the time interval(in milliseconds) between each samples in the
+//calibration phase
 #define         READ_SAMPLE_INTERVAL         (50)    //define how many samples you are going to take in normal operation
-#define         READ_SAMPLE_TIMES            (5)     //define the time interal(in milisecond) between each samples in
+#define         READ_SAMPLE_TIMES            (5)     //define the time interval(in milliseconds) between each samples in
 //normal operation
 /**********************Application Related Macros**********************************/
 #define         GAS_LPG                      (0)
 #define         GAS_CO                       (1)
 #define         GAS_SMOKE                    (2)
 /*****************************Globals***********************************************/
-unsigned long SLEEP_TIME = 30000; // Sleep time between reads (in milliseconds)
+uint32_t SLEEP_TIME = 30000; // Sleep time between reads (in milliseconds)
 //VARIABLES
 float Ro = 10000.0;    // this has to be tuned 10K Ohm
 int val = 0;           // variable to store the value coming from the sensor
@@ -163,8 +165,8 @@ float MQCalibration(int mq_pin)
 /*****************************  MQRead *********************************************
 Input:   mq_pin - analog channel
 Output:  Rs of the sensor
-Remarks: This function use MQResistanceCalculation to caculate the sensor resistenc (Rs).
-         The Rs changes as the sensor is in the different consentration of the target
+Remarks: This function use MQResistanceCalculation to calculate the sensor resistance (Rs).
+         The Rs changes as the sensor is in the different concentration of the target
          gas. The sample times and the time interval between samples could be configured
          by changing the definition of the macros.
 ************************************************************************************/

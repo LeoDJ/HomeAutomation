@@ -6,8 +6,8 @@
  * network topology allowing messages to be routed to nodes.
  *
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
- * Copyright (C) 2013-2017 Sensnology AB
- * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+ * Copyright (C) 2013-2018 Sensnology AB
+ * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
  * Support Forum: http://forum.mysensors.org
@@ -34,16 +34,16 @@
 
 #ifdef LINUX_ARCH_RASPBERRYPI
 #include "RPi.h"
-#define pinMode(pin, direction) rpi.pinMode(pin, direction)
-#define digitalWrite(pin, value) rpi.digitalWrite(pin, value)
-#define digitalRead(pin) rpi.digitalRead(pin)
-#define digitalPinToInterrupt(pin) rpi.digitalPinToInterrupt(pin)
+#define pinMode(pin, direction) RPi.pinMode(pin, direction)
+#define digitalWrite(pin, value) RPi.digitalWrite(pin, value)
+#define digitalRead(pin) RPi.digitalRead(pin)
+#define digitalPinToInterrupt(pin) RPi.digitalPinToInterrupt(pin)
 #else
 #include "GPIO.h"
-#define pinMode(pin, direction) gpio.pinMode(pin, direction)
-#define digitalWrite(pin, value) gpio.digitalWrite(pin, value)
-#define digitalRead(pin) gpio.digitalRead(pin)
-#define digitalPinToInterrupt(pin) gpio.digitalPinToInterrupt(pin)
+#define pinMode(pin, direction) GPIO.pinMode(pin, direction)
+#define digitalWrite(pin, value) GPIO.digitalWrite(pin, value)
+#define digitalRead(pin) GPIO.digitalRead(pin)
+#define digitalPinToInterrupt(pin) GPIO.digitalPinToInterrupt(pin)
 #endif
 
 #include "interrupt.h"
@@ -99,7 +99,6 @@ using std::min;
 using std::max;
 using std::abs;
 
-typedef bool boolean;
 typedef uint8_t byte;
 typedef string String;
 typedef char __FlashStringHelper;

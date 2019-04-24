@@ -6,8 +6,8 @@
  * network topology allowing messages to be routed to nodes.
  *
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
- * Copyright (C) 2013-2015 Sensnology AB
- * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+ * Copyright (C) 2013-2018 Sensnology AB
+ * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
  * Support Forum: http://forum.mysensors.org
@@ -36,8 +36,8 @@
  *			100-200 Soil is becoming dangerously dry for maximum production. Proceed with caution.
  *
  * Connection:
- *  D6, D7: alternative powering to avoid sensor degradation
- * A0, A1: alternative resistance mesuring
+ * D6, D7: alternative powering to avoid sensor degradation
+ * A0, A1: alternative resistance measuring
  *
  *  Based on:
  *  "Vinduino" portable soil moisture sensor code V3.00
@@ -64,21 +64,23 @@
 #define MY_DEBUG
 
 // Enable and select radio type attached
-#define MY_RADIO_NRF24
+#define MY_RADIO_RF24
+//#define MY_RADIO_NRF5_ESB
 //#define MY_RADIO_RFM69
+//#define MY_RADIO_RFM95
 
 #include <math.h>       // Conversion equation from resistance to %
 #include <MySensors.h>
 
 // Setting up format for reading 3 soil sensors
-#define NUM_READS 10    // Number of sensor reads for filtering
+#define NUM_READS (int)10    // Number of sensor reads for filtering
 #define CHILD_ID 0
 
 MyMessage msg(CHILD_ID, V_LEVEL);
-unsigned long SLEEP_TIME = 30000; // Sleep time between reads (in milliseconds)
+uint32_t SLEEP_TIME = 30000; // Sleep time between reads (in milliseconds)
 
 long buffer[NUM_READS];
-int index;
+int idx;
 
 /// @brief Structure to be used in percentage and resistance values matrix to be filtered (have to be in pairs)
 typedef struct {
@@ -136,7 +138,7 @@ void loop()
 	Serial.println ();
 
 	//send back the values
-	send(msg.set((long int)ceil(sensor1)));
+	send(msg.set((int32_t)ceil(sensor1)));
 	// delay until next measurement (msec)
 	sleep(SLEEP_TIME);
 }
@@ -179,10 +181,10 @@ void measure (int phase_b, int phase_a, int analog_input)
 // Averaging algorithm
 void addReading(long resistance)
 {
-	buffer[index] = resistance;
-	index++;
-	if (index >= NUM_READS) {
-		index = 0;
+	buffer[idx] = resistance;
+	idx++;
+	if (idx >= NUM_READS) {
+		idx = 0;
 	}
 }
 

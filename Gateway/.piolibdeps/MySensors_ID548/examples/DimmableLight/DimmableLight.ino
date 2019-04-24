@@ -1,4 +1,4 @@
-/**
+/*
  * The MySensors Arduino library handles the wireless radio link and protocol
  * between your home built sensors/actuators and HA controller of choice.
  * The sensors forms a self healing radio network with optional repeaters. Each
@@ -6,8 +6,8 @@
  * network topology allowing messages to be routed to nodes.
  *
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
- * Copyright (C) 2013-2015 Sensnology AB
- * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+ * Copyright (C) 2013-2018 Sensnology AB
+ * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
  * Support Forum: http://forum.mysensors.org
@@ -33,8 +33,10 @@
 #define MY_DEBUG
 
 // Enable and select radio type attached
-#define MY_RADIO_NRF24
+#define MY_RADIO_RF24
+//#define MY_RADIO_NRF5_ESB
 //#define MY_RADIO_RFM69
+//#define MY_RADIO_RFM95
 
 #include <MySensors.h>
 
@@ -46,7 +48,7 @@
 #define LIGHT_OFF 0
 #define LIGHT_ON 1
 
-#define SN "Dimable Light"
+#define SN "Dimmable Light"
 #define SV "1.0"
 
 int16_t LastLightState=LIGHT_OFF;
@@ -68,7 +70,7 @@ void setup()
 		}
 	}
 
-	//Here you actualy switch on/off the light with the last known dim level
+	//Here you actually switch on/off the light with the last known dim level
 	SetCurrentState2Hardware();
 
 	Serial.println( "Node ready to receive messages..." );

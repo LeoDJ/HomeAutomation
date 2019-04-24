@@ -6,8 +6,8 @@
  * network topology allowing messages to be routed to nodes.
  *
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
- * Copyright (C) 2013-2017 Sensnology AB
- * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+ * Copyright (C) 2013-2018 Sensnology AB
+ * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
  * Support Forum: http://forum.mysensors.org
@@ -24,18 +24,17 @@
 // For more options run ./configure --help
 
 // Config file
-//#define MY_LINUX_CONFIG_FILE "/etc/mysensors.dat"
+//#define MY_LINUX_CONFIG_FILE "/etc/mysensors.conf"
 
 // How many clients should be able to connect to this gateway (default 1)
 #define MY_GATEWAY_MAX_CLIENTS 10
 
 // Serial config
 // Enable this if you are using an Arduino connected to the USB
-//#define MY_LINUX_SERIAL_PORT "/dev/ttyACM0"
+//#define MY_LINUX_SERIAL_PORT "/dev/ttyUSB0"
 // Enable this if you need to connect to a controller running on the same device
-//#define MY_LINUX_IS_SERIAL_PTY
-// Choose a symlink name for the PTY device
-//#define MY_LINUX_SERIAL_PTY "/dev/ttyMySensorsGateway"
+// You also need to define MY_LINUX_SERIAL_PORT above with the symlink name for the PTY device
+//#define MY_LINUX_SERIAL_IS_PTY
 // Grant access to the specified system group for the serial device
 //#define MY_LINUX_SERIAL_GROUPNAME "tty"
 
@@ -46,7 +45,7 @@
 //#define MY_MQTT_PUBLISH_TOPIC_PREFIX "mygateway1-out"
 //#define MY_MQTT_SUBSCRIBE_TOPIC_PREFIX "mygateway1-in"
 
-// Enable these if your MQTT broker requires usenrame/password
+// Enable these if your MQTT broker requires username/password
 //#define MY_MQTT_USER "username"
 //#define MY_MQTT_PASSWORD "password"
 
@@ -61,15 +60,24 @@
 //#define MY_SIGNING_SOFT
 // Enable signing related debug
 //#define MY_DEBUG_VERBOSE_SIGNING
-// Enable this to request signatures from nodes that in turn request signatures from gateway
+// Enable this to request signatures
 //#define MY_SIGNING_REQUEST_SIGNATURES
-// Enable this to have gateway require all nodes in the network to sign messages sent to it
-// Note: MY_SIGNING_REQUEST_SIGNATURES must also be set
-//#define MY_SIGNING_GW_REQUEST_SIGNATURES_FROM_ALL
+// Enable this to to weaken security for gradual deployment purpose
+// (see signing documentation for details)
+//#define MY_SIGNING_WEAK_SECURITY
 
 // Enables RF24 encryption (all nodes and gateway must have this enabled, and all must be
 // personalized with the same AES key)
 //#define MY_RF24_ENABLE_ENCRYPTION
+
+// Enable inclusion mode if your HA Controller supports it (e.g. Vera Controller)
+//#define MY_INCLUSION_MODE_FEATURE
+// Enable Inclusion mode button on gateway
+//#define MY_INCLUSION_BUTTON_FEATURE
+// Set inclusion mode duration (in seconds)
+//#define MY_INCLUSION_MODE_DURATION 60
+// Digital pin used for inclusion mode button
+//#define MY_INCLUSION_MODE_BUTTON_PIN  3
 
 #include <MySensors.h>
 

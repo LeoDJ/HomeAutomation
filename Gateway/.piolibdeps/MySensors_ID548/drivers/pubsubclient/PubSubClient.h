@@ -73,15 +73,20 @@
 #define MQTTQOS1        (1 << 1)
 #define MQTTQOS2        (2 << 1)
 
-#ifdef ESP8266
+// Maximum size of fixed header and variable length size header
+#define MQTT_MAX_HEADER_SIZE 5
+
+#if defined(ESP8266) || defined(ESP32)
 #include <functional>
 #define MQTT_CALLBACK_SIGNATURE std::function<void(char*, uint8_t*, unsigned int)> callback
 #else
 #define MQTT_CALLBACK_SIGNATURE void (*callback)(char*, uint8_t*, unsigned int)
 #endif
 
+#define CHECK_STRING_LENGTH(l,s) if (l+2+strlen(s) > MQTT_MAX_PACKET_SIZE) {_client->stop();return false;}
+
 /** PubSubClient class */
-class PubSubClient
+class PubSubClient : public Print
 {
 private:
 	Client* _client;
@@ -92,10 +97,15 @@ private:
 	bool pingOutstanding;
 	MQTT_CALLBACK_SIGNATURE;
 	uint16_t readPacket(uint8_t*);
-	boolean readByte(uint8_t * result);
-	boolean readByte(uint8_t * result, uint16_t * index);
-	boolean write(uint8_t header, uint8_t* buf, uint16_t length);
+	bool readByte(uint8_t * result);
+	bool readByte(uint8_t * result, uint16_t * index);
+	bool write(uint8_t header, uint8_t* buf, uint16_t length);
 	uint16_t writeString(const char* string, uint8_t* buf, uint16_t pos);
+	// Build up the header ready to send
+	// Returns the size of the header
+	// Note: the header is built at the end of the first MQTT_MAX_HEADER_SIZE bytes, so will start
+	//       (MQTT_MAX_HEADER_SIZE - <returned size>) bytes into the buffer
+	size_t buildHeader(uint8_t header, uint8_t* buf, uint16_t length);
 	IPAddress ip;
 	const char* domain;
 	uint16_t port;
@@ -103,7 +113,7 @@ private:
 	int _state;
 public:
 	PubSubClient(); //!< PubSubClient
-	PubSubClient(Client& client); //!< PubSubClient
+	explicit PubSubClient(Client& client); //!< PubSubClient
 	PubSubClient(IPAddress, uint16_t, Client& client); //!< PubSubClient
 	PubSubClient(IPAddress, uint16_t, Client& client, Stream&); //!< PubSubClient
 	PubSubClient(IPAddress, uint16_t, MQTT_CALLBACK_SIGNATURE,Client& client); //!< PubSubClient
@@ -127,25 +137,45 @@ public:
 	PubSubClient& setClient(Client& client); //!< setClient
 	PubSubClient& setStream(Stream& stream); //!< setStream
 
-	boolean connect(const char* id); //!< connect
-	boolean connect(const char* id, const char* user, const char* pass); //!< connect
-	boolean connect(const char* id, const char* willTopic, uint8_t willQos, boolean willRetain,
-	                const char* willMessage); //!< connect
-	boolean connect(const char* id, const char* user, const char* pass, const char* willTopic,
-	                uint8_t willQos, boolean willRetain, const char* willMessage); //!< connect
+	bool connect(const char* id); //!< connect
+	bool connect(const char* id, const char* user, const char* pass); //!< connect
+	bool connect(const char* id, const char* willTopic, uint8_t willQos, bool willRetain,
+	             const char* willMessage); //!< connect
+	bool connect(const char* id, const char* user, const char* pass, const char* willTopic,
+	             uint8_t willQos, bool willRetain, const char* willMessage); //!< connect
+	bool connect(const char* id, const char* user, const char* pass, const char* willTopic,
+	             uint8_t willQos, bool willRetain, const char* willMessage, bool cleanSession); //!< connect
 	void disconnect(); //!< disconnect
-	boolean publish(const char* topic, const char* payload); //!< publish
-	boolean publish(const char* topic, const char* payload, boolean retained); //!< publish
-	boolean publish(const char* topic, const uint8_t * payload, unsigned int plength); //!< publish
-	boolean publish(const char* topic, const uint8_t * payload, unsigned int plength,
-	                boolean retained); //!< publish
-	boolean publish_P(const char* topic, const uint8_t * payload, unsigned int plength,
-	                  boolean retained); //!< publish_P
-	boolean subscribe(const char* topic); //!< subscribe
-	boolean subscribe(const char* topic, uint8_t qos); //!< subscribe
-	boolean unsubscribe(const char* topic); //!< unsubscribe
-	boolean loop(); //!< loop
-	boolean connected(); //!< connected
+	bool publish(const char* topic, const char* payload); //!< publish
+	bool publish(const char* topic, const char* payload, bool retained); //!< publish
+	bool publish(const char* topic, const uint8_t * payload, unsigned int plength); //!< publish
+	bool publish(const char* topic, const uint8_t * payload, unsigned int plength,
+	             bool retained); //!< publish
+	bool publish_P(const char* topic, const char* payload, bool retained); //!< publish
+	bool publish_P(const char* topic, const uint8_t * payload, unsigned int plength,
+	               bool retained); //!< publish
+	// Start to publish a message.
+	// This API:
+	//   beginPublish(...)
+	//   one or more calls to write(...)
+	//   endPublish()
+	// Allows for arbitrarily large payloads to be sent without them having to be copied into
+	// a new buffer and held in memory at one time
+	// Returns 1 if the message was started successfully, 0 if there was an error
+	bool beginPublish(const char* topic, unsigned int plength, bool retained); //!< beginPublish
+	// Finish off this publish message (started with beginPublish)
+	// Returns 1 if the packet was sent successfully, 0 if there was an error
+	int endPublish(); //!< endPublish
+	// Write a single byte of payload (only to be used with beginPublish/endPublish)
+	virtual size_t write(uint8_t); //!< write
+	// Write size bytes from buffer into the payload (only to be used with beginPublish/endPublish)
+	// Returns the number of bytes written
+	virtual size_t write(const uint8_t *buffer, size_t size); //!< write
+	bool subscribe(const char* topic); //!< subscribe
+	bool subscribe(const char* topic, uint8_t qos); //!< subscribe
+	bool unsubscribe(const char* topic); //!< unsubscribe
+	bool loop(); //!< loop
+	bool connected(); //!< connected
 	int state(); //!< state
 };
 

@@ -6,8 +6,8 @@
  * network topology allowing messages to be routed to nodes.
  *
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
- * Copyright (C) 2013-2016 Sensnology AB
- * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+ * Copyright (C) 2013-2018 Sensnology AB
+ * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
  * Support Forum: http://forum.mysensors.org
@@ -24,14 +24,22 @@
 #include <unistd.h>
 #endif
 
+// debug output
+#if defined(MY_DEBUG_VERBOSE_CORE)
+#define CORE_DEBUG(x,...)	DEBUG_OUTPUT(x, ##__VA_ARGS__)	//!< debug
+#else
+#define CORE_DEBUG(x,...)									//!< debug NULL
+#endif
+
 // message buffers
+
 MyMessage _msg;			// Buffer for incoming messages
 MyMessage _msgTmp;		// Buffer for temporary messages (acks and nonces among others)
 
 // core configuration
 static coreConfig_t _coreConfig;
 
-#if defined(MY_DEBUG)
+#if defined(DEBUG_OUTPUT_ENABLED)
 char _convBuf[MAX_PAYLOAD*2+1];
 #endif
 
@@ -81,6 +89,14 @@ void _infiniteLoop(void)
 
 void _begin(void)
 {
+#if defined(MY_CORE_ONLY)
+	// initialize HW and run setup if present
+	(void)hwInit();
+	if (setup) {
+		setup();
+	}
+	return;
+#endif
 	// reset wdt
 	hwWatchdogReset();
 
@@ -88,10 +104,19 @@ void _begin(void)
 		preHwInit();
 	}
 
-	hwInit();
+	const bool hwInitResult = hwInit();
 
-	CORE_DEBUG(PSTR("MCO:BGN:INIT " MY_NODE_TYPE ",CP=" MY_CAPABILITIES ",VER="
-	                MYSENSORS_LIBRARY_VERSION "\n"));
+#if !defined(MY_SPLASH_SCREEN_DISABLED) && !defined(MY_GATEWAY_FEATURE)
+	displaySplashScreen();
+#endif
+
+	CORE_DEBUG(PSTR("MCO:BGN:INIT " MY_NODE_TYPE ",CP=" MY_CAPABILITIES ",REL=%" PRIu8 ",VER="
+	                MYSENSORS_LIBRARY_VERSION "\n"), MYSENSORS_LIBRARY_VERSION_PRERELEASE_NUMBER);
+	if (!hwInitResult) {
+		CORE_DEBUG(PSTR("!MCO:BGN:HW ERR\n"));
+		setIndication(INDICATION_ERR_HW_INIT);
+		_infiniteLoop();
+	}
 
 	// set defaults
 	_coreConfig.presentationSent = false;
@@ -151,7 +176,7 @@ void _begin(void)
 		setup();
 	}
 #if defined(MY_SENSOR_NETWORK)
-	CORE_DEBUG(PSTR("MCO:BGN:INIT OK,TSP=%d\n"), isTransportReady());
+	CORE_DEBUG(PSTR("MCO:BGN:INIT OK,TSP=%" PRIu8 "\n"), isTransportReady() && transportSanityCheck());
 #else
 	// no sensor network defined, call presentation & registration
 	_callbackTransportReady();
@@ -323,12 +348,25 @@ bool sendHeartbeat(const bool ack)
 #endif
 }
 
+
+
 bool present(const uint8_t childSensorId, const uint8_t sensorType, const char *description,
              const bool ack)
 {
 	return _sendRoute(build(_msgTmp, GATEWAY_ADDRESS, childSensorId, C_PRESENTATION, sensorType,
-	                        ack).set(childSensorId==NODE_SENSOR_ID?MYSENSORS_LIBRARY_VERSION:description));
+	                        ack).set(childSensorId == NODE_SENSOR_ID ? MYSENSORS_LIBRARY_VERSION : description));
 }
+
+#if !defined(__linux__)
+bool present(const uint8_t childSensorId, const uint8_t sensorType,
+             const __FlashStringHelper *description,
+             const bool ack)
+{
+	return _sendRoute(build(_msgTmp, GATEWAY_ADDRESS, childSensorId, C_PRESENTATION, sensorType,
+	                        ack).set(childSensorId == NODE_SENSOR_ID ? F(" MYSENSORS_LIBRARY_VERSION "): description));
+}
+#endif
+
 
 bool sendSketchInfo(const char *name, const char *version, const bool ack)
 {
@@ -344,6 +382,23 @@ bool sendSketchInfo(const char *name, const char *version, const bool ack)
 	return result;
 }
 
+#if !defined(__linux__)
+bool sendSketchInfo(const __FlashStringHelper *name, const __FlashStringHelper *version,
+                    const bool ack)
+{
+	bool result = true;
+	if (name) {
+		result &= _sendRoute(build(_msgTmp, GATEWAY_ADDRESS, NODE_SENSOR_ID, C_INTERNAL, I_SKETCH_NAME,
+		                           ack).set(name));
+	}
+	if (version) {
+		result &= _sendRoute(build(_msgTmp, GATEWAY_ADDRESS, NODE_SENSOR_ID, C_INTERNAL, I_SKETCH_VERSION,
+		                           ack).set(version));
+	}
+	return result;
+}
+#endif
+
 bool request(const uint8_t childSensorId, const uint8_t variableType, const uint8_t destination)
 {
 	return _sendRoute(build(_msgTmp, destination, childSensorId, C_REQ, variableType).set(""));
@@ -355,22 +410,21 @@ bool requestTime(const bool ack)
 }
 
 // Message delivered through _msg
-bool _processInternalMessages(void)
+bool _processInternalCoreMessage(void)
 {
 	const uint8_t type = _msg.type;
-
 	if (_msg.sender == GATEWAY_ADDRESS) {
 		if (type == I_REBOOT) {
 #if !defined(MY_DISABLE_REMOTE_RESET)
-			// Requires MySensors or other bootloader with watchdogs enabled
 			setIndication(INDICATION_REBOOT);
+			// WDT fuse should be enabled
 			hwReboot();
 #endif
 		} else if (type == I_REGISTRATION_RESPONSE) {
 #if defined (MY_REGISTRATION_FEATURE) && !defined(MY_GATEWAY_FEATURE)
 			_coreConfig.nodeRegistered = _msg.getBool();
 			setIndication(INDICATION_GOT_REGISTRATION);
-			CORE_DEBUG(PSTR("MCO:PIM:NODE REG=%d\n"), _coreConfig.nodeRegistered);	// node registration
+			CORE_DEBUG(PSTR("MCO:PIM:NODE REG=%" PRIu8 "\n"), _coreConfig.nodeRegistered);	// node registration
 #endif
 		} else if (type == I_CONFIG) {
 			// Pick up configuration from controller (currently only metric/imperial) and store it in eeprom if changed
@@ -383,35 +437,31 @@ bool _processInternalMessages(void)
 			presentNode();
 		} else if (type == I_HEARTBEAT_REQUEST) {
 			(void)sendHeartbeat();
+		} else if (_msg.type == I_VERSION) {
+#if !defined(MY_GATEWAY_FEATURE)
+			(void)_sendRoute(build(_msgTmp, GATEWAY_ADDRESS, NODE_SENSOR_ID, C_INTERNAL,
+			                       I_VERSION).set(MYSENSORS_LIBRARY_VERSION_INT));
+#endif
 		} else if (type == I_TIME) {
 			// Deliver time to callback
 			if (receiveTime) {
 				receiveTime(_msg.getULong());
 			}
-		} else if (type == I_CHILDREN) {
-#if defined(MY_REPEATER_FEATURE)
+		}  else if (type == I_CHILDREN) {
 			if (_msg.data[0] == 'C') {
+#if defined(MY_REPEATER_FEATURE) && defined(MY_SENSOR_NETWORK)
 				// Clears child relay data for this node
 				setIndication(INDICATION_CLEAR_ROUTING);
 				transportClearRoutingTable();
 				(void)_sendRoute(build(_msgTmp, GATEWAY_ADDRESS, NODE_SENSOR_ID, C_INTERNAL, I_CHILDREN).set("OK"));
-			}
 #endif
+			}
 		} else if (type == I_DEBUG) {
-#if defined(MY_DEBUG) || defined(MY_SPECIAL_DEBUG)
+#if defined(MY_SPECIAL_DEBUG)
 			const char debug_msg = _msg.data[0];
 			if (debug_msg == 'R') {		// routing table
-#if defined(MY_REPEATER_FEATURE)
-				for (uint16_t cnt = 0; cnt < SIZE_ROUTES; cnt++) {
-					const uint8_t route = transportGetRoute(cnt);
-					if (route != BROADCAST_ADDRESS) {
-						CORE_DEBUG(PSTR("MCO:PIM:ROUTE N=%d,R=%d\n"), cnt, route);
-						uint8_t outBuf[2] = { (uint8_t)cnt,route };
-						(void)_sendRoute(build(_msgTmp, GATEWAY_ADDRESS, NODE_SENSOR_ID, C_INTERNAL, I_DEBUG).set(outBuf,
-						                 2));
-						wait(200);
-					}
-				}
+#if defined(MY_REPEATER_FEATURE) && defined(MY_SENSOR_NETWORK)
+				transportReportRoutingTable();
 #endif
 			} else if (debug_msg == 'V') {	// CPU voltage
 				(void)_sendRoute(build(_msgTmp, GATEWAY_ADDRESS, NODE_SENSOR_ID, C_INTERNAL,
@@ -424,7 +474,7 @@ bool _processInternalMessages(void)
 				                       I_DEBUG).set(hwFreeMem()));
 			} else if (debug_msg == 'E') {	// clear MySensors eeprom area and reboot
 				(void)_sendRoute(build(_msgTmp, GATEWAY_ADDRESS, NODE_SENSOR_ID, C_INTERNAL, I_DEBUG).set("OK"));
-				for (int i = EEPROM_START; i<EEPROM_LOCAL_CONFIG_ADDRESS; i++) {
+				for (uint16_t i = EEPROM_START; i<EEPROM_LOCAL_CONFIG_ADDRESS; i++) {
 					hwWriteConfig(i, 0xFF);
 				}
 				setIndication(INDICATION_REBOOT);
@@ -432,13 +482,13 @@ bool _processInternalMessages(void)
 			}
 #endif
 		} else {
-			return false;
+			return false; // further processing required
 		}
 	} else {
 		// sender is a node
 		if (type == I_REGISTRATION_REQUEST) {
 #if defined(MY_GATEWAY_FEATURE)
-			// registeration requests are exclusively handled by GW/Controller
+			// registration requests are exclusively handled by GW/Controller
 #if !defined(MY_REGISTRATION_CONTROLLER)
 			bool approveRegistration;
 
@@ -460,10 +510,10 @@ bool _processInternalMessages(void)
 #endif
 #endif
 		} else {
-			return false;
+			return false; // further processing required
 		}
 	}
-	return true;
+	return true; // if not GW or no further processing required
 }
 
 
@@ -512,16 +562,9 @@ void doYield(void)
 int8_t _sleep(const uint32_t sleepingMS, const bool smartSleep, const uint8_t interrupt1,
               const uint8_t mode1, const uint8_t interrupt2, const uint8_t mode2)
 {
-	CORE_DEBUG(PSTR("MCO:SLP:MS=%lu,SMS=%d,I1=%d,M1=%d,I2=%d,M2=%d\n"), sleepingMS, smartSleep,
+	CORE_DEBUG(PSTR("MCO:SLP:MS=%" PRIu32 ",SMS=%" PRIu8 ",I1=%" PRIu8 ",M1=%" PRIu8 ",I2=%" PRIu8
+	                ",M2=%" PRIu8 "\n"), sleepingMS, smartSleep,
 	           interrupt1, mode1, interrupt2, mode2);
-	// OTA FW feature: do not sleep if FW update ongoing
-#if defined(MY_OTA_FIRMWARE_FEATURE)
-	if (isFirmwareUpdateOngoing()) {
-		debug(PSTR("!MCO:SLP:FWUPD\n"));	// sleeping not possible, FW update ongoing
-		wait(sleepingMS);
-		return MY_SLEEP_NOT_POSSIBLE;
-	}
-#endif
 	// repeater feature: sleeping not possible
 #if defined(MY_REPEATER_FEATURE)
 	(void)smartSleep;
@@ -549,24 +592,47 @@ int8_t _sleep(const uint32_t sleepingMS, const bool smartSleep, const uint8_t in
 		// sleep remainder
 		if (sleepDeltaMS < sleepingTimeMS) {
 			sleepingTimeMS -= sleepDeltaMS;		// calculate remaining sleeping time
-			CORE_DEBUG(PSTR("MCO:SLP:MS=%lu\n"), sleepingTimeMS);
+			CORE_DEBUG(PSTR("MCO:SLP:MS=%" PRIu32 "\n"), sleepingTimeMS);
 		} else {
 			// no sleeping time left
 			return MY_SLEEP_NOT_POSSIBLE;
 		}
 	}
-#endif
-
-	if (smartSleep) {
-		// notify controller about going to sleep
-		(void)sendHeartbeat();
-		wait(MY_SMART_SLEEP_WAIT_DURATION_MS);		// listen for incoming messages
+	// OTA FW feature: do not sleep if FW update ongoing
+#if defined(MY_OTA_FIRMWARE_FEATURE)
+	while (isFirmwareUpdateOngoing() && sleepingTimeMS) {
+		CORE_DEBUG(PSTR("!MCO:SLP:FWUPD\n"));	// sleeping not possible, FW update ongoing
+		wait(1000ul);
+		sleepingTimeMS = sleepingTimeMS >= 1000ul ? sleepingTimeMS - 1000ul : 1000ul;
 	}
+#endif // MY_OTA_FIRMWARE_FEATURE
+	if (smartSleep) {
+		// sleeping time left?
+		if (sleepingTimeMS > 0 && sleepingTimeMS < ((uint32_t)MY_SMART_SLEEP_WAIT_DURATION_MS)) {
+			wait(sleepingMS);
+			CORE_DEBUG(PSTR("!MCO:SLP:NTL\n"));	// sleeping not possible, no time left
+			return MY_SLEEP_NOT_POSSIBLE;
+		}
+		// notify controller about going to sleep, payload indicates smartsleep waiting time in MS
+		(void)_sendRoute(build(_msgTmp, GATEWAY_ADDRESS, NODE_SENSOR_ID, C_INTERNAL,
+		                       I_PRE_SLEEP_NOTIFICATION).set((uint32_t)MY_SMART_SLEEP_WAIT_DURATION_MS));
+		wait(MY_SMART_SLEEP_WAIT_DURATION_MS);		// listen for incoming messages
+#if defined(MY_OTA_FIRMWARE_FEATURE)
+		// check if during smart sleep waiting period a FOTA request was received
+		if (isFirmwareUpdateOngoing()) {
+			CORE_DEBUG(PSTR("!MCO:SLP:FWUPD\n"));	// sleeping not possible, FW update ongoing
+			return MY_SLEEP_NOT_POSSIBLE;
+		}
+#endif // MY_OTA_FIRMWARE_FEATURE
+	}
+#else
+	(void)smartSleep;
+#endif // MY_SENSOR_NETWORK
 
 #if defined(MY_SENSOR_NETWORK)
-	CORE_DEBUG(PSTR("MCO:SLP:TPD\n"));	// sleep, power down transport
-	transportPowerDown();
+	transportDisable();
 #endif
+	setIndication(INDICATION_SLEEP);
 
 #if defined (MY_DEFAULT_TX_LED_PIN) || defined(MY_DEFAULT_RX_LED_PIN) || defined(MY_DEFAULT_ERR_LED_PIN)
 	// Wait until leds finish their blinking pattern
@@ -575,10 +641,7 @@ int8_t _sleep(const uint32_t sleepingMS, const bool smartSleep, const uint8_t in
 	}
 #endif
 
-	setIndication(INDICATION_SLEEP);
-
 	int8_t result = MY_SLEEP_NOT_POSSIBLE;	// default
-
 	if (interrupt1 != INTERRUPT_NOT_DEFINED && interrupt2 != INTERRUPT_NOT_DEFINED) {
 		// both IRQs
 		result = hwSleep(interrupt1, mode1, interrupt2, mode2, sleepingTimeMS);
@@ -589,9 +652,16 @@ int8_t _sleep(const uint32_t sleepingMS, const bool smartSleep, const uint8_t in
 		// no IRQ
 		result = hwSleep(sleepingTimeMS);
 	}
-
 	setIndication(INDICATION_WAKEUP);
-	CORE_DEBUG(PSTR("MCO:SLP:WUP=%d\n"), result);	// sleep wake-up
+	CORE_DEBUG(PSTR("MCO:SLP:WUP=%" PRIi8 "\n"), result);	// sleep wake-up
+#if defined(MY_SENSOR_NETWORK)
+	transportReInitialise();
+#endif
+	if (smartSleep) {
+		// notify controller about waking up, payload indicates sleeping time in MS
+		(void)_sendRoute(build(_msgTmp, GATEWAY_ADDRESS, NODE_SENSOR_ID, C_INTERNAL,
+		                       I_POST_SLEEP_NOTIFICATION).set(sleepingTimeMS));
+	}
 	return result;
 #endif
 }
@@ -640,18 +710,19 @@ void _nodeLock(const char* str)
 {
 #ifdef MY_NODE_LOCK_FEATURE
 	// Make sure EEPROM is updated to locked status
-	hwWriteConfig(EEPROM_NODE_LOCK_COUNTER, 0);
+	hwWriteConfig(EEPROM_NODE_LOCK_COUNTER_ADDRESS, 0);
 	while (1) {
 		setIndication(INDICATION_ERR_LOCKED);
-		CORE_DEBUG(PSTR("MCO:NLK:NODE LOCKED. TO UNLOCK, GND PIN %d AND RESET\n"), MY_NODE_UNLOCK_PIN);
+		CORE_DEBUG(PSTR("MCO:NLK:NODE LOCKED. TO UNLOCK, GND PIN %" PRIu8 " AND RESET\n"),
+		           MY_NODE_UNLOCK_PIN);
 		doYield();
 		(void)_sendRoute(build(_msgTmp, GATEWAY_ADDRESS, NODE_SENSOR_ID,C_INTERNAL, I_LOCKED).set(str));
 #if defined(MY_SENSOR_NETWORK)
-		transportPowerDown();
-		CORE_DEBUG(PSTR("MCO:NLK:TPD\n"));	// power down transport
+		transportSleep();
+		CORE_DEBUG(PSTR("MCO:NLK:TSL\n"));	// sleep transport
 #endif
 		setIndication(INDICATION_SLEEP);
-		(void)hwSleep((unsigned long)1000*60*30); // Sleep for 30 min before resending LOCKED message
+		(void)hwSleep((uint32_t)1000*60*30); // Sleep for 30 min before resending LOCKED message
 		setIndication(INDICATION_WAKEUP);
 	}
 #else
@@ -663,15 +734,15 @@ void _checkNodeLock(void)
 {
 #ifdef MY_NODE_LOCK_FEATURE
 	// Check if node has been locked down
-	if (hwReadConfig(EEPROM_NODE_LOCK_COUNTER) == 0) {
+	if (hwReadConfig(EEPROM_NODE_LOCK_COUNTER_ADDRESS) == 0) {
 		// Node is locked, check if unlock pin is asserted, else hang the node
 		hwPinMode(MY_NODE_UNLOCK_PIN, INPUT_PULLUP);
 		// Make a short delay so we are sure any large external nets are fully pulled
-		unsigned long enter = hwMillis();
+		uint32_t enter = hwMillis();
 		while (hwMillis() - enter < 2) {}
 		if (hwDigitalRead(MY_NODE_UNLOCK_PIN) == 0) {
 			// Pin is grounded, reset lock counter
-			hwWriteConfig(EEPROM_NODE_LOCK_COUNTER, MY_NODE_LOCK_COUNTER_MAX);
+			hwWriteConfig(EEPROM_NODE_LOCK_COUNTER_ADDRESS, MY_NODE_LOCK_COUNTER_MAX);
 			// Disable pullup
 			hwPinMode(MY_NODE_UNLOCK_PIN, INPUT);
 			setIndication(INDICATION_ERR_LOCKED);
@@ -681,9 +752,12 @@ void _checkNodeLock(void)
 			hwPinMode(MY_NODE_UNLOCK_PIN, INPUT);
 			_nodeLock("LDB"); //Locked during boot
 		}
-	} else if (hwReadConfig(EEPROM_NODE_LOCK_COUNTER) == 0xFF) {
-		// Reset walue
-		hwWriteConfig(EEPROM_NODE_LOCK_COUNTER, MY_NODE_LOCK_COUNTER_MAX);
+	} else if (hwReadConfig(EEPROM_NODE_LOCK_COUNTER_ADDRESS) == 0xFF) {
+		// Reset value
+		hwWriteConfig(EEPROM_NODE_LOCK_COUNTER_ADDRESS, MY_NODE_LOCK_COUNTER_MAX);
 	}
 #endif
 }
+#if DOXYGEN
+
+#endif

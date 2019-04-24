@@ -1,4 +1,4 @@
-/**
+/*
  * The MySensors Arduino library handles the wireless radio link and protocol
  * between your home built sensors/actuators and HA controller of choice.
  * The sensors forms a self healing radio network with optional repeaters. Each
@@ -6,8 +6,8 @@
  * network topology allowing messages to be routed to nodes.
  *
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
- * Copyright (C) 2013-2015 Sensnology AB
- * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+ * Copyright (C) 2013-2018 Sensnology AB
+ * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
  * Support Forum: http://forum.mysensors.org
@@ -23,7 +23,7 @@
  * Interrupt driven binary switch example with dual interrupts
  * Author: Patrick 'Anticimex' Fallberg
  * Connect one button or door/window reed switch between
- * digitial I/O pin 3 (BUTTON_PIN below) and GND and the other
+ * digital I/O pin 3 (BUTTON_PIN below) and GND and the other
  * one in similar fashion on digital I/O pin 2.
  * This example is designed to fit Arduino Nano/Pro Mini
  *
@@ -34,8 +34,10 @@
 #define MY_DEBUG
 
 // Enable and select radio type attached
-#define MY_RADIO_NRF24
+#define MY_RADIO_RF24
+//#define MY_RADIO_NRF5_ESB
 //#define MY_RADIO_RFM69
+//#define MY_RADIO_RFM95
 
 #include <MySensors.h>
 
@@ -70,12 +72,8 @@ MyMessage msg2(SECONDARY_CHILD_ID, V_TRIPPED);
 void setup()
 {
 	// Setup the buttons
-	pinMode(PRIMARY_BUTTON_PIN, INPUT);
-	pinMode(SECONDARY_BUTTON_PIN, INPUT);
-
-	// Activate internal pull-ups
-	digitalWrite(PRIMARY_BUTTON_PIN, HIGH);
-	digitalWrite(SECONDARY_BUTTON_PIN, HIGH);
+	pinMode(PRIMARY_BUTTON_PIN, INPUT_PULLUP);
+	pinMode(SECONDARY_BUTTON_PIN, INPUT_PULLUP);
 }
 
 void presentation()

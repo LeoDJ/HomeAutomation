@@ -6,8 +6,8 @@
 * network topology allowing messages to be routed to nodes.
 *
 * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
-* Copyright (C) 2013-2015 Sensnology AB
-* Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
+* Copyright (C) 2013-2018 Sensnology AB
+* Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
 *
 * Documentation: http://www.mysensors.org
 * Support Forum: http://forum.mysensors.org
@@ -20,7 +20,7 @@
 *
 * DESCRIPTION
 * The ArduinoGateway prints data received from sensors on the serial link.
-* The gateway accepts input on seral which will be sent out on radio network.
+* The gateway accepts input on serial which will be sent out on radio network.
 *
 * The GW code is designed for Arduino Nano 328p / 16MHz
 *
@@ -30,9 +30,9 @@
 *
 * LEDs (OPTIONAL):
 * - To use the feature, uncomment any of the MY_DEFAULT_xx_LED_PINs
-* - RX (green) - blink fast on radio message recieved. In inclusion mode will blink fast only on presentation recieved
+* - RX (green) - blink fast on radio message received. In inclusion mode will blink fast only on presentation received
 * - TX (yellow) - blink fast on radio message transmitted. In inclusion mode will blink slowly
-* - ERR (red) - fast blink on error during transmission error or recieve crc error
+* - ERR (red) - fast blink on error during transmission error or receive crc error
 *
 */
 
@@ -41,8 +41,10 @@
 
 
 // Enable and select radio type attached
-#define MY_RADIO_NRF24
+#define MY_RADIO_RF24
+//#define MY_RADIO_NRF5_ESB
 //#define MY_RADIO_RFM69
+//#define MY_RADIO_RFM95
 
 // Set LOW transmit power level as default, if you have an amplified NRF-module and
 // power your radio separately with a good regulator you can turn up PA level.
@@ -51,7 +53,7 @@
 // Enable serial gateway
 #define MY_GATEWAY_SERIAL
 
-// Define a lower baud rate for Arduino's running on 8 MHz (Arduino Pro Mini 3.3V & SenseBender)
+// Define a lower baud rate for Arduinos running on 8 MHz (Arduino Pro Mini 3.3V & SenseBender)
 #if F_CPU == 8000000L
 #define MY_BAUD_RATE 38400
 #endif
