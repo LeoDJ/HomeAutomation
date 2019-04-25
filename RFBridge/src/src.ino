@@ -70,23 +70,31 @@ unsigned long now;
 uint32_t hassInitDelay = 5000;
 void hassInit() {
     // send initial message for all variables (needed for Home Assistant auto detection)
-    #define IR_NULL "00,00000000,00,0000,00"
-    MyMessage msgIr(CID_IR, V_IR_SEND);
+    #define IR_NULL "00,00000000,00"
+    MyMessage msgIr(CID_IR, V_VAR1);
+    send(msgIr.set(IR_NULL ",0000,00"));
+    msgIr.setType(V_IR_SEND);
     send(msgIr.set(IR_NULL));
     msgIr.setType(V_IR_RECEIVE);
     send(msgIr.set(IR_NULL));
+    msgIr.setType(V_STATUS);
+    send(msgIr.set(0));
 
-    #define RF_NULL "00,00000000,00,0000"
-    MyMessage msgRf(CID_RF, V_IR_SEND);
+    #define RF_NULL "00,00000000,00"
+    MyMessage msgRf(CID_RF, V_VAR1);
+    send(msgRf.set(RF_NULL ",0000"));
+    msgRf.setType(V_IR_SEND);
     send(msgRf.set(RF_NULL));
     msgRf.setType(V_IR_RECEIVE);
     send(msgRf.set(RF_NULL));
+    msgRf.setType(V_STATUS);
+    send(msgRf.set(0));
 }
 
 void loop() {
     now = millis();
 
-    if(hassInitDelay > 0 && millis() > hassInitDelay) {
+    if(hassInitDelay > 0 && millis() > hassInitDelay && isTransportReady()) {
         hassInit();
         hassInitDelay = 0;
     }

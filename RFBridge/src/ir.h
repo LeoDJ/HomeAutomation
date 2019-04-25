@@ -7,6 +7,7 @@ IRsend irsend;
 IRCode codeToSend;
 
 MyMessage msgIrReceive(CID_IR, V_IR_RECEIVE);
+MyMessage msgIrReceiveDebug(CID_IR, V_VAR1);
 
 //Mitsubishi and Pronto not implemented
 void sendIRCode(decode_type_t protocol, uint32_t code, uint8_t numBits = 32, uint16_t address = 0) {
@@ -52,8 +53,10 @@ void pollIRCode() {
                 addr = 0;   // prevent random values for address on other protocols
             }
             char irStr[25];
-            snprintf(irStr, 25, "%02X,%08lX,%02X,%04X,%02X", (uint8_t)type, ircode.value, ircode.bits, addr, 1);
+            snprintf(irStr, 25, "%02X,%08lX,%02X", (uint8_t)type, ircode.value, ircode.bits);
             send(msgIrReceive.set(irStr));
+            snprintf(irStr + strlen(irStr), 25, ",%04X,%02X", addr, 1);
+            send(msgIrReceiveDebug.set(irStr));
         }
         irrecv.resume();
     }

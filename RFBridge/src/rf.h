@@ -4,6 +4,12 @@
 RCSwitch rf = RCSwitch();
 
 MyMessage msgRfReceive(CID_RF, V_IR_RECEIVE); 
+MyMessage msgRfReceiveDebug(CID_RF, V_VAR1); 
+
+#define REPETITION_TIMEOUT 100
+uint32_t lastCodeReceivesMillis = 0;
+uint32_t lastCodeReceived = 0;
+uint16_t codeRepetitions = 0;
 
 void pollRFCode() {
     if(rf.available()) {
@@ -12,11 +18,21 @@ void pollRFCode() {
         uint8_t numBits = rf.getReceivedBitlength();
         uint16_t pulseLength = rf.getReceivedDelay();
 
-        // publish received RF Code to MySensors
-        char rfStr[20];
-        snprintf(rfStr, sizeof(rfStr), "%02X,%08lX,%02X,%04X", protocol, code, numBits, pulseLength);
-        send(msgRfReceive.set(rfStr));
+        if(millis() - lastCodeReceivesMillis > REPETITION_TIMEOUT) {
+            // publish received RF Code to MySensors
+            char rfStr[20];
+            snprintf(rfStr, sizeof(rfStr), "%02X,%08lX,%02X", protocol, code, numBits);
+            send(msgRfReceive.set(rfStr));
+            snprintf(rfStr + strlen(rfStr), sizeof(rfStr), ",%04X", pulseLength);
+            send(msgRfReceiveDebug.set(rfStr));
+            codeRepetitions = 0;
+        }
+        else {
+            codeRepetitions++;
+        }
 
+        lastCodeReceivesMillis = millis();
+        lastCodeReceived = code;
         rf.resetAvailable();
     }
 }
