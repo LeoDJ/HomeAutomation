@@ -39,7 +39,7 @@
 #define MY_NODE_ID 5
 
 // Enable and select radio type attached
-#define MY_RADIO_NRF24
+#define MY_RADIO_RF24
 
 #define MY_RF24_CE_PIN 7
 #define MY_RF24_CS_PIN 8
@@ -69,7 +69,7 @@
 #define TEMP_INTERVAL   300000 // Time between temperature updates
 #define TEMP_AVG_COUNT  10     // Number of readings to take for each data point
 
-#define SEND_FREQUENCY  15000  // maximum frequency of status updates
+#define SEND_FREQUENCY  5000   // maximum frequency of status updates
 #define MAX_WATT        30000  // limit maximum reported wattage to catch astray readings
 
 // averaging configuration, better don't touch
@@ -93,7 +93,7 @@ bool pulseTriggered = 0;
 unsigned long lastTriggered = 0;
 unsigned long watts, lastWatts = 0, watt_avg;
 unsigned short watt_n;
-unsigned long pulseCount = 0, lastPulseCount = 0;
+uint32_t pulseCount = 0, lastPulseCount = 0;
 bool pcReceived = false;
 
 #define C_TEMP_ID 2
@@ -151,29 +151,22 @@ void loop()
         measure();
     }
 
-    if(now - lastSend >= SEND_FREQUENCY) {
-        lastSend = now;
-        if(watt_n > 0) {
-            unsigned long w = watt_avg / watt_n;
-            if(w < MAX_WATT && w != lastWatts) {
-                lastWatts = w;
-                send(wattMsg.set(w));
-                watt_avg = 0;
-                watt_n = 0;
-            }
-        }
-        if(pcReceived && pulseCount != lastPulseCount) {
-            lastPulseCount = pulseCount;
-            float kWh = (float)pulseCount / (float)PULSE_FACTOR;
-            send(kwhMsg.set(kWh, 3));
-            send(pcMsg.set(pulseCount));
-        }
-        else if(!pcReceived) {
-            // no count received, request again
-            request(C_POWER_ID, V_VAR1);
-        }
-    }
+    measureTemp();
+}
 
+
+void receive(const MyMessage &message)
+{
+    if (message.type==V_VAR1) {
+		pulseCount = lastPulseCount = message.getLong();
+		//Serial.print("Received last pulse count from gw:");
+		//Serial.println(pulseCount);
+		pcReceived = true;
+	}
+}
+
+void measureTemp() {
+    now = millis();
     if(now - lastTempSend >= TEMP_INTERVAL) { // start temperature measuring every interval
         lastTempSend = now;
         tempMeasureCount = 0; // also restarts temperature measurements
@@ -212,17 +205,6 @@ void loop()
              #endif
         }
     }
-}
-
-
-void receive(const MyMessage &message)
-{
-    if (message.type==V_VAR1) {
-		pulseCount = lastPulseCount = message.getLong();
-		//Serial.print("Received last pulse count from gw:");
-		//Serial.println(pulseCount);
-		pcReceived = true;
-	}
 }
 
 /**
@@ -316,4 +298,37 @@ void trigger() {
     lastTriggered = trig;
     delayMicroseconds(200);       // TODO: get rid of this delay
     digitalWrite(LED_PIN, LOW);
+
+    // check that we don't send too often
+    if(millis() - lastSend >= SEND_FREQUENCY) {
+        lastSend = millis();
+        #if USER_DEBUG & 2
+            Serial.println("SENDING DATA NOW");
+        #endif
+        sendData();
+    }
+
+}
+
+void sendData() {
+    lastSend = now;
+    if(watt_n > 0) {
+        uint32_t w = watt_avg / watt_n;
+        if(w < MAX_WATT && w != lastWatts) {
+            lastWatts = w;
+            send(wattMsg.set(w));
+            watt_avg = 0;
+            watt_n = 0;
+        }
+    }
+    if(pcReceived && pulseCount != lastPulseCount) {
+        lastPulseCount = pulseCount;
+        float kWh = (float)pulseCount / (float)PULSE_FACTOR;
+        send(kwhMsg.set(kWh, 3));
+        send(pcMsg.set(pulseCount));
+    }
+    else if(!pcReceived) {
+        // no count received, request again
+        request(C_POWER_ID, V_VAR1);
+    }
 }
